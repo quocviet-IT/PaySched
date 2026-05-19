@@ -1,0 +1,116 @@
+/**
+ * Factory for generic CRUD Route Handlers over a Drizzle pg table.
+ *
+ * Returns { GET, POST, PATCH, DELETE } handlers that can be re-exported from
+ * `app/api/<entity>/route.ts` and `app/api/<entity>/[id]/route.ts`.
+ *
+ * Usage:
+ *   const { listAll, createOne } = makeCrud({
+ *     table: paymentTypes,
+ *     insertSchema: insertPaymentTypeSchema,
+ *     requireAdminToWrite: false,
+ *   });
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { eq, sql } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { requireUser, requireAdmin } from "@/lib/auth";
+
+type AnyTable = PgTable & { id: any };
+
+export interface CrudConfig<TSchema extends z.ZodTypeAny> {
+  table: AnyTable;
+  insertSchema: TSchema;
+  /** Validate partial updates; defaults to `insertSchema.partial()`. */
+  updateSchema?: z.ZodTypeAny;
+  /** When true, only Admin role may create/update/delete. */
+  requireAdminToWrite?: boolean;
+  /** Optional transform of validated input before INSERT (e.g. compute derived fields). */
+  transform?: (input: any, ctx: { userId: string }) => Promise<any> | any;
+  /** Optional post-write hook (e.g. cascade audit). */
+  afterCreate?: (row: any, ctx: { userId: string }) => Promise<void> | void;
+  /** Override the order — defaults to `created_at desc` if present, else by id. */
+  orderBy?: any;
+}
+
+export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
+  const { table, insertSchema, requireAdminToWrite } = cfg;
+  const updateSchema = cfg.updateSchema ?? (insertSchema as any).partial();
+  const checkAuth = requireAdminToWrite ? requireAdmin : requireUser;
+
+  return {
+    listAll: async () => {
+      await requireUser();
+      const rows = await db.select().from(table);
+      return NextResponse.json(rows);
+    },
+
+    createOne: async (req: NextRequest) => {
+      const session = await checkAuth();
+      const raw = await req.json().catch(() => ({}));
+      const parsed = insertSchema.safeParse(raw);
+      if (!parsed.success) {
+        return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
+      }
+      let input = parsed.data;
+      if (cfg.transform) input = await cfg.transform(input, { userId: session.id });
+      const [row] = await db.insert(table).values(input).returning();
+      if (cfg.afterCreate) await cfg.afterCreate(row, { userId: session.id });
+      return NextResponse.json(row, { status: 201 });
+    },
+
+    getOne: async (_req: NextRequest, { params }: { params: { id: string } }) => {
+      await requireUser();
+      const [row] = await db.select().from(table).where(eq((table as any).id, params.id)).limit(1);
+      if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json(row);
+    },
+
+    updateOne: async (req: NextRequest, { params }: { params: { id: string } }) => {
+      await checkAuth();
+      const raw = await req.json().catch(() => ({}));
+      const parsed = updateSchema.safeParse(raw);
+      if (!parsed.success) {
+        return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
+      }
+      const [row] = await db
+        .update(table)
+        .set(parsed.data as any)
+        .where(eq((table as any).id, params.id))
+        .returning();
+      if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json(row);
+    },
+
+    deleteOne: async (_req: NextRequest, { params }: { params: { id: string } }) => {
+      await checkAuth();
+      const [row] = await db
+        .delete(table)
+        .where(eq((table as any).id, params.id))
+        .returning();
+      if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json({ ok: true });
+    },
+  };
+}
+
+/** Convenience: log to audit_log via raw SQL. Never throws on failure. */
+export async function logAudit(
+  userId: string,
+  username: string | null,
+  action: string,
+  entityType: string,
+  entityId: string | null,
+  details?: string,
+) {
+  try {
+    await db.execute(sql`
+      insert into public.audit_log (user_id, username, action, entity_type, entity_id, details)
+      values (${userId}, ${username}, ${action}, ${entityType}, ${entityId}, ${details ?? null})
+    `);
+  } catch {
+    // swallow — audit failures must never block user actions
+  }
+}

@@ -1,0 +1,58 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { profiles } from "@shared/schema";
+import { eq } from "drizzle-orm";
+
+/**
+ * Sign in by username (not email). Steps:
+ *   1. Look up profiles.username → profiles.id
+ *   2. Service-role: admin.getUserById(id) → auth.users.email
+ *   3. supabase.auth.signInWithPassword({ email, password })
+ *
+ * Supabase Auth still owns the credential check; username is just a friendlier
+ * identifier for the finance team.
+ */
+export async function signIn(formData: FormData) {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const redirectTo = String(formData.get("redirectedFrom") ?? "/dashboard");
+
+  if (!username || !password) {
+    return { error: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu" };
+  }
+
+  // 1. Resolve username → user id
+  const [profile] = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.username, username))
+    .limit(1);
+
+  if (!profile) {
+    return { error: "Tên đăng nhập hoặc mật khẩu không đúng" };
+  }
+
+  // 2. Resolve user id → email (service-role bypasses RLS)
+  const service = createServiceClient();
+  const { data: userResp, error: userErr } = await service.auth.admin.getUserById(profile.id);
+  if (userErr || !userResp?.user?.email) {
+    return { error: "Tên đăng nhập hoặc mật khẩu không đúng" };
+  }
+
+  // 3. Sign in with the resolved email
+  const supabase = createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: userResp.user.email,
+    password,
+  });
+  if (error) {
+    return { error: "Tên đăng nhập hoặc mật khẩu không đúng" };
+  }
+
+  revalidatePath("/", "layout");
+  redirect(redirectTo);
+}

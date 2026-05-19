@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Hung Phat brand tokens — see HP UX/UI skill */
+    --bg-foundation: #f7f1eb;
+    --surface-card: #fbf7f1;
+    --surface-inset: #efe8dd;
+    --ink-primary: #2a2725;
+    --ink-body: #4a4540;
+    --ink-muted: #8a8178;
+    --rule: #d4cfc4;
+    --accent: #e91d79;
+    --platinum: #bdc1c6;
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-body), Cardo, Georgia, serif;
+    font-optical-sizing: auto;
+  }
+  body {
+    @apply bg-hp-foundation text-hp-body antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-title), "Cormorant Garamond", Georgia, serif;
+    @apply text-hp-ink;
+  }
+  /* Default focus ring across the app — pink, restrained */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* Reusable eyebrow label utility */
+@layer utilities {
+  .eyebrow {
+    @apply block uppercase tracking-eyebrow text-[11px] text-hp-muted;
+  }
+}
