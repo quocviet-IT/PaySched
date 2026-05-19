@@ -12,7 +12,7 @@
  *   });
  */
 import { NextRequest, NextResponse } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, getTableName } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -39,6 +39,7 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
   const { table, insertSchema, requireAdminToWrite } = cfg;
   const updateSchema = cfg.updateSchema ?? (insertSchema as any).partial();
   const checkAuth = requireAdminToWrite ? requireAdmin : requireUser;
+  const entityType = getTableName(table);
 
   return {
     listAll: async () => {
@@ -59,6 +60,7 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
         if (cfg.transform) input = await cfg.transform(input, { userId: session.id });
         const [row] = await db.insert(table).values(input).returning();
         if (cfg.afterCreate) await cfg.afterCreate(row, { userId: session.id });
+        await logAudit(session.id, session.username, "create", entityType, (row as any)?.id ?? null, describe(row));
         return NextResponse.json(row, { status: 201 });
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
@@ -81,7 +83,7 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
 
     updateOne: async (req: NextRequest, { params }: { params: { id: string } }) => {
       try {
-        await checkAuth();
+        const session = await checkAuth();
         const raw = await req.json().catch(() => ({}));
         const parsed = updateSchema.safeParse(raw);
         if (!parsed.success) {
@@ -93,6 +95,7 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
           .where(eq((table as any).id, params.id))
           .returning();
         if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+        await logAudit(session.id, session.username, "update", entityType, params.id, describe(row));
         return NextResponse.json(row);
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
@@ -106,12 +109,13 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
 
     deleteOne: async (_req: NextRequest, { params }: { params: { id: string } }) => {
       try {
-        await checkAuth();
+        const session = await checkAuth();
         const [row] = await db
           .delete(table)
           .where(eq((table as any).id, params.id))
           .returning();
         if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+        await logAudit(session.id, session.username, "delete", entityType, params.id, describe(row));
         return NextResponse.json({ ok: true });
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
@@ -120,6 +124,13 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
       }
     },
   };
+}
+
+/** Short human-readable label for a row — prefers name-like columns, else id. */
+function describe(row: any): string | undefined {
+  if (!row || typeof row !== "object") return undefined;
+  const label = row.name ?? row.username ?? row.abbreviation ?? row.expenseId ?? null;
+  return label ? String(label) : undefined;
 }
 
 /** Convenience: log to audit_log via raw SQL. Never throws on failure. */

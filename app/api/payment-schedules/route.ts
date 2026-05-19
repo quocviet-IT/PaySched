@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq, like, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { logAudit } from "@/lib/crud";
 import { paymentSchedules, internalCompanies, insertPaymentScheduleSchema } from "@shared/schema";
 
 export async function GET() {
@@ -10,7 +11,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  await requireUser();
+  const session = await requireUser();
   const parsed = insertPaymentScheduleSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
@@ -45,5 +46,6 @@ export async function POST(req: NextRequest) {
     status: data.status ?? "scheduled",
   }).returning();
 
+  await logAudit(session.id, session.username, "create", "payment_schedules", row.id, `${row.expenseId} · ${row.vendorName}`);
   return NextResponse.json(row, { status: 201 });
 }

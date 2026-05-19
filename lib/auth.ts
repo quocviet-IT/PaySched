@@ -9,6 +9,7 @@ export type Role = "Admin" | "User";
 export interface SessionUser {
   id: string;
   email: string;
+  username: string;
   role: Role;
 }
 
@@ -20,7 +21,7 @@ export async function getSession(): Promise<SessionUser | null> {
   if (!user) return null;
 
   const [profile] = await db
-    .select({ role: profiles.role })
+    .select({ role: profiles.role, username: profiles.username })
     .from(profiles)
     .where(eq(profiles.id, user.id))
     .limit(1);
@@ -28,6 +29,7 @@ export async function getSession(): Promise<SessionUser | null> {
   return {
     id: user.id,
     email: user.email ?? "",
+    username: profile?.username ?? user.email ?? "",
     role: (profile?.role as Role) ?? "User",
   };
 }

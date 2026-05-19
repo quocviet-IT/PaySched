@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/crud";
 import { paymentSchedules, insertPaymentScheduleSchema } from "@shared/schema";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -12,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  await requireUser();
+  const session = await requireUser();
   const parsed = insertPaymentScheduleSchema.partial().safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ message: "Invalid input" }, { status: 400 });
@@ -22,14 +23,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const [row] = await db.update(paymentSchedules).set(patch).where(eq(paymentSchedules.id, params.id)).returning();
   if (!row) return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
+  await logAudit(session.id, session.username, "update", "payment_schedules", row.id, `${row.expenseId} · ${row.vendorName}`);
   return NextResponse.json(row);
 }
 
 export const PUT = PATCH;
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const [row] = await db.delete(paymentSchedules).where(eq(paymentSchedules.id, params.id)).returning();
   if (!row) return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
+  await logAudit(session.id, session.username, "delete", "payment_schedules", row.id, `${row.expenseId} · ${row.vendorName}`);
   return NextResponse.json({ ok: true });
 }

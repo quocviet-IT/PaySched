@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { logAudit } from "@/lib/crud";
 import {
   paymentRecords,
   paymentSchedules,
@@ -115,5 +116,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  await logAudit(session.id, session.username, "create", "payment_records", row.id, `${row.expenseId} · $${row.amount}`);
   return NextResponse.json(row, { status: 201 });
 }
