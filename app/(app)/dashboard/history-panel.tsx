@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { ManageFilesButton, AuditHistoryButton } from "./record-actions";
 import type { PaymentRecord, PaymentSchedule } from "@shared/schema";
 
 export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; sessionUserId: string }) {
@@ -42,16 +43,16 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
     <Card>
       <CardHeader>
         <div className="space-y-1">
-          <CardTitle>Lịch sử thanh toán</CardTitle>
-          <p className="text-sm text-hp-muted">Các giao dịch đã ghi nhận.</p>
+          <CardTitle>Payment History</CardTitle>
+          <p className="text-sm text-hp-muted">All recorded payments.</p>
         </div>
         <div className="flex items-end gap-3">
           <div className="space-y-1">
-            <Label htmlFor="hist-from">Từ</Label>
+            <Label htmlFor="hist-from">From</Label>
             <Input id="hist-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="hist-to">Đến</Label>
+            <Label htmlFor="hist-to">To</Label>
             <Input id="hist-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
           </div>
         </div>
@@ -65,7 +66,7 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
               <TableHead>Amount</TableHead>
               <TableHead>Method</TableHead>
               <TableHead>Days Late</TableHead>
-              <TableHead className="w-24" />
+              <TableHead className="w-40" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,6 +82,8 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
                     {r.daysLate > 0 ? `${r.daysLate}d` : "—"}
                   </TableCell>
                   <TableCell className="flex gap-1">
+                    <ManageFilesButton record={r} />
+                    <AuditHistoryButton recordId={r.id} />
                     {canEdit && (
                       <Button size="icon" variant="ghost" aria-label="Edit" onClick={() => setEditing(r)}>
                         <Pencil className="h-3.5 w-3.5" />
@@ -97,7 +100,7 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
             })}
             {filtered.length === 0 && (
               <TableRow><TableCell colSpan={6} className="text-center py-10 text-hp-muted">
-                Chưa có giao dịch nào.
+                No payments recorded yet.
               </TableCell></TableRow>
             )}
           </TableBody>
@@ -146,7 +149,7 @@ function RecordEditDialog({ record, onClose }: { record: PaymentRecord | null; o
           onSubmit={(e) => {
             e.preventDefault();
             if (!reason.trim()) {
-              toast({ title: "Lý do bắt buộc", variant: "destructive" });
+              toast({ title: "Reason is required", variant: "destructive" });
               return;
             }
             save.mutate({
@@ -165,10 +168,10 @@ function RecordEditDialog({ record, onClose }: { record: PaymentRecord | null; o
             <Input id="er-date" required type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="er-reason">Lý do chỉnh sửa</Label>
+            <Label htmlFor="er-reason">Reason for change</Label>
             <textarea
               id="er-reason" required value={reason} onChange={(e) => setReason(e.target.value)}
-              placeholder="Bắt buộc — ghi rõ lý do thay đổi" rows={3}
+              placeholder="Required — explain why you are editing" rows={3}
               className="w-full bg-transparent border-0 border-b border-hp-rule px-0.5 py-1.5 font-body text-base text-hp-body focus:outline-none focus:border-b-2 focus:border-hp-pink transition-colors"
             />
           </div>
@@ -206,32 +209,32 @@ function RecordDeleteDialog({ id, onClose }: { id: string | null; onClose: () =>
     <Dialog open={!!id} onOpenChange={(v) => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Xoá giao dịch</DialogTitle>
-          <p className="text-sm text-hp-muted mt-1">Thao tác này không thể hoàn tác.</p>
+          <DialogTitle>Delete Payment</DialogTitle>
+          <p className="text-sm text-hp-muted mt-1">This action cannot be undone.</p>
         </DialogHeader>
         <form
           className="space-y-5"
           onSubmit={(e) => {
             e.preventDefault();
             if (!reason.trim()) {
-              toast({ title: "Lý do bắt buộc", variant: "destructive" });
+              toast({ title: "Reason is required", variant: "destructive" });
               return;
             }
             del.mutate();
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="del-reason">Lý do xoá</Label>
+            <Label htmlFor="del-reason">Reason for deletion</Label>
             <textarea
               id="del-reason" required value={reason} onChange={(e) => setReason(e.target.value)}
-              placeholder="Bắt buộc" rows={3}
+              placeholder="Required" rows={3}
               className="w-full bg-transparent border-0 border-b border-hp-rule px-0.5 py-1.5 font-body text-base text-hp-body focus:outline-none focus:border-b-2 focus:border-hp-pink transition-colors"
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
             <Button type="submit" variant="destructive" disabled={del.isPending}>
-              {del.isPending ? "Đang xoá…" : "Xoá"}
+              {del.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
+import { Logo } from "@/components/logo";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -16,11 +17,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-hp-foundation">
       <aside className="w-60 border-r border-hp-rule bg-hp-card">
-        <div className="h-20 border-b border-hp-rule px-7 flex flex-col justify-center">
-          <span className="eyebrow">Hung Phat</span>
-          <span className="font-title text-xl text-hp-ink leading-tight mt-0.5">
-            PaySched
-          </span>
+        <div className="h-20 border-b border-hp-rule px-6 flex items-center">
+          <Logo size="sm" />
         </div>
         <nav className="px-3 py-6 flex flex-col gap-px">
           {nav.map((item) => (

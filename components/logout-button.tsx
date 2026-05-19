@@ -29,7 +29,7 @@ export function LogoutButton() {
         disabled:opacity-40 disabled:cursor-not-allowed
       "
     >
-      {pending ? "Đang thoát" : "Đăng xuất"}
+      {pending ? "Signing out…" : "Sign out"}
     </button>
   );
 }

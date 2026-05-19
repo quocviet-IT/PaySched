@@ -1,5 +1,6 @@
 import { signIn } from "./actions";
 import { LoginForm } from "./login-form";
+import { Logo } from "@/components/logo";
 
 export default function LoginPage({
   searchParams,
@@ -11,13 +12,10 @@ export default function LoginPage({
       <div className="w-full max-w-md">
         <div className="border border-hp-rule bg-hp-card p-9">
           <header className="mb-9">
-            <span className="eyebrow mb-3">Hung Phat</span>
-            <h1 className="font-title text-[36px] leading-tight text-hp-ink">
-              PaySchedManager
-            </h1>
+            <Logo size="lg" />
             <div className="mt-5 h-px bg-hp-rule" />
             <p className="mt-5 text-sm text-hp-body">
-              Đăng nhập để tiếp tục quản lý lịch thanh toán.
+              Sign in to continue managing your payment schedules.
             </p>
           </header>
 

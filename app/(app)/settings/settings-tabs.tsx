@@ -26,6 +26,7 @@ import {
   type PaymentType,
   type ExpenseType,
   type Profile,
+  type Vendor,
 } from "@shared/schema";
 
 export function SettingsTabs({ isAdmin }: { isAdmin: boolean }) {
@@ -33,6 +34,7 @@ export function SettingsTabs({ isAdmin }: { isAdmin: boolean }) {
     <Tabs defaultValue="companies">
       <TabsList>
         <TabsTrigger value="companies">Internal Companies</TabsTrigger>
+        <TabsTrigger value="vendors">Vendors</TabsTrigger>
         <TabsTrigger value="accounts">Payment Accounts</TabsTrigger>
         <TabsTrigger value="mappings">Account Mappings</TabsTrigger>
         <TabsTrigger value="payment-types">Payment Types</TabsTrigger>
@@ -41,6 +43,7 @@ export function SettingsTabs({ isAdmin }: { isAdmin: boolean }) {
       </TabsList>
 
       <TabsContent value="companies"><CompaniesManager isAdmin={isAdmin} /></TabsContent>
+      <TabsContent value="vendors"><VendorsManager isAdmin={isAdmin} /></TabsContent>
       <TabsContent value="accounts"><AccountsManager isAdmin={isAdmin} /></TabsContent>
       <TabsContent value="mappings"><MappingsManager isAdmin={isAdmin} /></TabsContent>
       <TabsContent value="payment-types"><PaymentTypesManager isAdmin={isAdmin} /></TabsContent>
@@ -144,12 +147,137 @@ function CompaniesManager({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+// ============ Vendors ============
+function VendorsManager({ isAdmin }: { isAdmin: boolean }) {
+  const invalidate = useInvalidator("/api/vendors");
+  const [open, setOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [name, setName] = React.useState("");
+  const [abbreviation, setAbbreviation] = React.useState("");
+
+  const { data = [], isLoading } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
+
+  const reset = () => { setEditingId(null); setName(""); setAbbreviation(""); };
+
+  const create = useMutation({
+    mutationFn: (body: { name: string; abbreviation: string }) =>
+      apiRequest("POST", "/api/vendors", body),
+    onSuccess: () => {
+      invalidate(); toast({ title: "Vendor added" });
+      setOpen(false); reset();
+    },
+    onError: (e: Error) => toast({ title: "Failed to add", description: e.message, variant: "destructive" }),
+  });
+
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { name: string; abbreviation: string } }) =>
+      apiRequest("PATCH", `/api/vendors/${id}`, body),
+    onSuccess: () => {
+      invalidate(); toast({ title: "Vendor updated" });
+      setOpen(false); reset();
+    },
+    onError: (e: Error) => toast({ title: "Failed to update", description: e.message, variant: "destructive" }),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/vendors/${id}`),
+    onSuccess: () => { invalidate(); toast({ title: "Vendor deleted" }); },
+    onError: (e: Error) => toast({ title: "Failed to delete", description: e.message, variant: "destructive" }),
+  });
+
+  const startEdit = (v: Vendor) => {
+    setEditingId(v.id);
+    setName(v.name);
+    setAbbreviation(v.abbreviation);
+    setOpen(true);
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const body = { name: name.trim(), abbreviation: abbreviation.trim().toUpperCase() };
+    if (!body.name || !body.abbreviation) {
+      toast({ title: "Please fill in name and abbreviation", variant: "destructive" });
+      return;
+    }
+    if (editingId) update.mutate({ id: editingId, body });
+    else create.mutate(body);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Vendors</CardTitle>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+          <DialogTrigger asChild>
+            <Button><Plus className="h-3.5 w-3.5" />Add Vendor</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editingId ? "Edit" : "Add"} Vendor</DialogTitle></DialogHeader>
+            <form className="space-y-6" onSubmit={submit}>
+              <div className="space-y-2">
+                <Label htmlFor="vendor-name">Vendor Name</Label>
+                <Input id="vendor-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Corp" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vendor-abbr">Abbreviation</Label>
+                <Input
+                  id="vendor-abbr"
+                  required
+                  value={abbreviation}
+                  onChange={(e) => setAbbreviation(e.target.value.toUpperCase())}
+                  placeholder="ACME"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="secondary" onClick={() => { setOpen(false); reset(); }}>Cancel</Button>
+                <Button type="submit" disabled={create.isPending || update.isPending}>
+                  {(create.isPending || update.isPending) ? "Saving…" : (editingId ? "Update Vendor" : "Add Vendor")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? <Loading /> : data.length === 0 ? (
+          <Empty title="No vendors yet" body="Add a vendor to keep a reusable list of payees." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vendor Name</TableHead>
+                <TableHead>Abbreviation</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((v) => (
+                <TableRow key={v.id}>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell className="font-mono uppercase tracking-eyebrow text-[11px] text-hp-muted">{v.abbreviation}</TableCell>
+                  <TableCell className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(v)} aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    {isAdmin && <RowDelete onClick={() => del.mutate(v.id)} />}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ============ Payment Accounts ============
 function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
   const invAccounts = useInvalidator("/api/payment-accounts");
   const invBanks = useInvalidator("/api/account-banks");
 
   const [open, setOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const [addBankOpen, setAddBankOpen] = React.useState(false);
   const [companyId, setCompanyId] = React.useState("");
   const [bankId, setBankId] = React.useState("");
@@ -162,13 +290,20 @@ function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
   const { data: companies = [] } = useQuery<InternalCompany[]>({ queryKey: ["/api/internal-companies"] });
   const { data: banks = [] } = useQuery<AccountBank[]>({ queryKey: ["/api/account-banks"] });
 
-  const reset = () => { setCompanyId(""); setBankId(""); setAccountTypeCode(""); setLastFour(""); };
+  const reset = () => { setCompanyId(""); setBankId(""); setAccountTypeCode(""); setLastFour(""); setEditingId(null); };
 
   const createAccount = useMutation({
     mutationFn: (body: { internalCompanyId: string; bankId: string; accountTypeCode: string; lastFourDigits: string | null }) =>
       apiRequest("POST", "/api/payment-accounts", body),
     onSuccess: () => { invAccounts(); toast({ title: "Account added" }); reset(); setOpen(false); },
     onError: (e: Error) => toast({ title: "Failed to add account", description: e.message, variant: "destructive" }),
+  });
+
+  const updateAccount = useMutation({
+    mutationFn: (body: { id: string; patch: { internalCompanyId: string; bankId: string; accountTypeCode: string; lastFourDigits: string | null } }) =>
+      apiRequest("PATCH", `/api/payment-accounts/${body.id}`, body.patch),
+    onSuccess: () => { invAccounts(); toast({ title: "Account updated" }); reset(); setOpen(false); },
+    onError: (e: Error) => toast({ title: "Failed to update", description: e.message, variant: "destructive" }),
   });
 
   const createBank = useMutation({
@@ -198,11 +333,27 @@ function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
       toast({ title: "Last 4 digits must be exactly 4 numbers", variant: "destructive" });
       return;
     }
-    createAccount.mutate({
+    const patch = {
       internalCompanyId: companyId, bankId, accountTypeCode,
       lastFourDigits: lastFour || null,
-    });
+    };
+    if (editingId) {
+      updateAccount.mutate({ id: editingId, patch });
+    } else {
+      createAccount.mutate(patch);
+    }
   };
+
+  const startEdit = (a: PaymentAccount) => {
+    setEditingId(a.id);
+    setCompanyId(a.internalCompanyId);
+    setBankId(a.bankId);
+    setAccountTypeCode(a.accountTypeCode);
+    setLastFour(a.lastFourDigits ?? "");
+    setOpen(true);
+  };
+
+  const isPending = createAccount.isPending || updateAccount.isPending;
 
   return (
     <Card>
@@ -213,7 +364,7 @@ function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
             <Button><Plus className="h-3.5 w-3.5" />Add Account</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Add Payment Account</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit" : "Add"} Payment Account</DialogTitle></DialogHeader>
             <div className="space-y-6">
               <FieldSelect label="Internal Company" value={companyId} onChange={setCompanyId} placeholder="Select company">
                 {companies.map((c) => (
@@ -289,8 +440,8 @@ function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
 
               <DialogFooter>
                 <Button variant="secondary" onClick={() => { setOpen(false); reset(); }}>Cancel</Button>
-                <Button onClick={submit} disabled={createAccount.isPending}>
-                  {createAccount.isPending ? "Adding…" : "Add Account"}
+                <Button onClick={submit} disabled={isPending}>
+                  {isPending ? "Saving…" : (editingId ? "Update Account" : "Add Account")}
                 </Button>
               </DialogFooter>
             </div>
@@ -321,7 +472,12 @@ function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
                     <TableCell>{b ? `${b.name} (${b.nickname})` : "—"}</TableCell>
                     <TableCell className="uppercase tracking-eyebrow text-[11px] text-hp-muted">{a.accountType}</TableCell>
                     <TableCell className="font-mono tabular-nums">{a.lastFourDigits || "—"}</TableCell>
-                    <TableCell>{isAdmin && <RowDelete onClick={() => del.mutate(a.id)} />}</TableCell>
+                    <TableCell className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => startEdit(a)} aria-label="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {isAdmin && <RowDelete onClick={() => del.mutate(a.id)} />}
+                    </TableCell>
                   </TableRow>
                 );
               })}

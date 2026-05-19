@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { CsvImportDialog } from "./csv-import-dialog";
 import type {
   PaymentSchedule, InternalCompany, PaymentAccount, PaymentType, ExpenseType,
 } from "@shared/schema";
@@ -95,8 +96,8 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
     <Card>
       <CardHeader>
         <div className="space-y-1">
-          <CardTitle>Lịch thanh toán</CardTitle>
-          <p className="text-sm text-hp-muted">Quản lý vendor và lịch trả định kỳ.</p>
+          <CardTitle>Payment Schedules</CardTitle>
+          <p className="text-sm text-hp-muted">Manage vendors and recurring payment schedules.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -105,9 +106,10 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               className="pl-7 w-64"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm vendor, công ty…"
+              placeholder="Search vendor, company…"
             />
           </div>
+          <CsvImportDialog />
           <Button onClick={() => { setEditing(null); setOpen(true); }}>
             <Plus className="h-3.5 w-3.5" />Add Schedule
           </Button>
@@ -178,7 +180,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10 text-hp-muted">
-                      Chưa có lịch nào — bấm Add Schedule để bắt đầu.
+                      No schedules yet — click Add Schedule to get started.
                     </TableCell>
                   </TableRow>
                 )}
@@ -366,6 +368,13 @@ function RecordPaymentDialog({
     amount: "",
     paymentMethod: "bank-transfer",
     paymentAccountId: "",
+    approvedBy: "",
+  });
+  const [confirmationFile, setConfirmationFile] = React.useState<File | null>(null);
+  const [approvalScreenshot, setApprovalScreenshot] = React.useState<File | null>(null);
+
+  const { data: approvers = [] } = useQuery<{ id: string; username: string }[]>({
+    queryKey: ["/api/users/approvers"],
   });
 
   React.useEffect(() => {
@@ -375,12 +384,34 @@ function RecordPaymentDialog({
         amount: String(target.amount),
         paymentMethod: "bank-transfer",
         paymentAccountId: target.paymentAccountId,
+        approvedBy: "",
       });
+      setConfirmationFile(null);
+      setApprovalScreenshot(null);
     }
   }, [target]);
 
   const record = useMutation({
-    mutationFn: (body: any) => apiRequest("POST", "/api/payment-records", body),
+    mutationFn: async (body: any) => {
+      // Upload files first (if any), then create record with returned paths.
+      const upload = async (f: File | null) => {
+        if (!f) return null;
+        const fd = new FormData();
+        fd.append("file", f);
+        const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Upload failed");
+        return (await res.json()).path as string;
+      };
+      const [confirmationPath, approvalPath] = await Promise.all([
+        upload(confirmationFile),
+        upload(approvalScreenshot),
+      ]);
+      return apiRequest("POST", "/api/payment-records", {
+        ...body,
+        confirmationFile: confirmationPath,
+        approvalScreenshot: approvalPath,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/payment-schedules"] });
       qc.invalidateQueries({ queryKey: ["/api/payment-records"] });
@@ -401,55 +432,119 @@ function RecordPaymentDialog({
       amount: Number(form.amount),
       paymentMethod: form.paymentMethod,
       paymentAccountId: form.paymentAccountId || null,
+      approvedBy: form.approvedBy || null,
     });
   };
 
   return (
     <Dialog open={!!target} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Ghi thanh toán</DialogTitle>
+          <DialogTitle>Record Payment</DialogTitle>
           <p className="text-sm text-hp-muted mt-1">
             {target.vendorName} · {formatCurrency(Number(target.amount))} · {target.frequency}
           </p>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="rec-date">Ngày thanh toán</Label>
-            <Input id="rec-date" required type="date" value={form.paymentDate}
-              onChange={(e) => setForm({ ...form, paymentDate: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rec-date">Payment Date</Label>
+              <Input id="rec-date" required type="date" value={form.paymentDate}
+                onChange={(e) => setForm({ ...form, paymentDate: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rec-amount">Amount</Label>
+              <Input id="rec-amount" required type="number" step="0.01" value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="rec-amount">Số tiền</Label>
-            <Input id="rec-amount" required type="number" step="0.01" value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rec-method">Payment Method</Label>
+              <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
+                <SelectTrigger id="rec-method"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rec-acc">Payment Account</Label>
+              <Select value={form.paymentAccountId} onValueChange={(v) => setForm({ ...form, paymentAccountId: v })}>
+                <SelectTrigger id="rec-acc"><SelectValue placeholder="Select account" /></SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="rec-method">Phương thức</Label>
-            <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
-              <SelectTrigger id="rec-method"><SelectValue /></SelectTrigger>
+            <Label htmlFor="rec-approver">Approved By (optional)</Label>
+            <Select value={form.approvedBy} onValueChange={(v) => setForm({ ...form, approvedBy: v })}>
+              <SelectTrigger id="rec-approver"><SelectValue placeholder="Select approver" /></SelectTrigger>
               <SelectContent>
-                {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                {approvers.map((u) => <SelectItem key={u.id} value={u.id}>{u.username}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="rec-acc">Tài khoản (tuỳ chọn)</Label>
-            <Select value={form.paymentAccountId} onValueChange={(v) => setForm({ ...form, paymentAccountId: v })}>
-              <SelectTrigger id="rec-acc"><SelectValue placeholder="Chọn tài khoản" /></SelectTrigger>
-              <SelectContent>
-                {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+
+          <FileField
+            id="rec-confirm"
+            label="Confirmation file (optional)"
+            file={confirmationFile}
+            onChange={setConfirmationFile}
+          />
+          <FileField
+            id="rec-approval"
+            label="Approval screenshot (optional)"
+            file={approvalScreenshot}
+            onChange={setApprovalScreenshot}
+          />
+
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={record.isPending}>
-              {record.isPending ? "Đang ghi…" : "Ghi thanh toán"}
+              {record.isPending ? "Recording…" : "Record Payment"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FileField({
+  id, label, file, onChange,
+}: {
+  id: string;
+  label: string;
+  file: File | null;
+  onChange: (f: File | null) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center gap-3">
+        <input
+          id={id}
+          type="file"
+          aria-label={label}
+          title={label}
+          onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+          className="block w-full text-sm text-hp-body file:mr-3 file:border file:border-hp-ink file:bg-transparent file:text-hp-ink file:uppercase file:tracking-eyebrow file:text-[11px] file:px-3 file:py-1.5 file:rounded-sm hover:file:bg-hp-ink hover:file:text-hp-foundation file:cursor-pointer cursor-pointer"
+        />
+        {file && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="uppercase tracking-eyebrow text-[11px] text-hp-muted hover:text-hp-pink"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

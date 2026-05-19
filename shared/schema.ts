@@ -95,6 +95,25 @@ export const insertExpenseTypeSchema = createInsertSchema(expenseTypes).omit({ i
 export type InsertExpenseType = z.infer<typeof insertExpenseTypeSchema>;
 export type ExpenseType = typeof expenseTypes.$inferSelect;
 
+// Vendors
+export const vendors = pgTable("vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  abbreviation: text("abbreviation").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertVendorSchema = createInsertSchema(vendors)
+  .omit({ id: true, createdAt: true })
+  .extend({
+    name: z.string().trim().min(1, "Name is required"),
+    abbreviation: z.string().trim().min(1, "Abbreviation is required")
+      .transform((v) => v.toUpperCase()),
+  });
+
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+
 // Payment Schedules
 export const paymentSchedules = pgTable("payment_schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -114,7 +133,10 @@ export const paymentSchedules = pgTable("payment_schedules", {
 
 export const insertPaymentScheduleSchema = createInsertSchema(paymentSchedules)
   .omit({ id: true, expenseId: true, createdAt: true })
-  .extend({ nextDueDate: z.coerce.date() });
+  .extend({
+    nextDueDate: z.coerce.date(),
+    amount: z.coerce.string().refine((v) => v !== "" && !Number.isNaN(Number(v)), "Invalid amount"),
+  });
 
 export type InsertPaymentSchedule = z.infer<typeof insertPaymentScheduleSchema>;
 export type PaymentSchedule = typeof paymentSchedules.$inferSelect;
@@ -143,6 +165,7 @@ export const insertPaymentRecordSchema = createInsertSchema(paymentRecords)
   .omit({ id: true, paidBy: true, createdAt: true, scheduledDueDate: true, daysLate: true })
   .extend({
     paymentDate: z.coerce.date(),
+    amount: z.coerce.string().refine((v) => v !== "" && !Number.isNaN(Number(v)), "Invalid amount"),
     confirmationFile: z.string().nullable().optional(),
     approvalScreenshot: z.string().nullable().optional(),
   });

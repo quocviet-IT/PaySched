@@ -26,7 +26,7 @@ export function LoginForm({ action, redirectedFrom, initialError }: Props) {
       <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
 
       <Field
-        label="Tên đăng nhập"
+        label="Username"
         name="username"
         type="text"
         autoComplete="username"
@@ -34,7 +34,7 @@ export function LoginForm({ action, redirectedFrom, initialError }: Props) {
       />
 
       <Field
-        label="Mật khẩu"
+        label="Password"
         name="password"
         type="password"
         autoComplete="current-password"
@@ -57,7 +57,7 @@ export function LoginForm({ action, redirectedFrom, initialError }: Props) {
           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-hp-ink
         "
       >
-        {pending ? "Đang đăng nhập" : "Đăng nhập"}
+        {pending ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

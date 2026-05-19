@@ -1,11 +1,9 @@
-import { Placeholder } from "@/components/placeholder";
+import { requireUser } from "@/lib/auth";
+import { AuditView } from "./audit-view";
 
-export default function AuditPage() {
-  return (
-    <Placeholder
-      title="Audit Log"
-      portFrom="client/src/pages/audit.tsx (Node edition)"
-      next="Port the audit list (200 latest). Per-record audit trail lives at GET /api/record-audits?recordId=..."
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function AuditPage() {
+  await requireUser();
+  return <AuditView />;
 }

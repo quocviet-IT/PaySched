@@ -22,7 +22,7 @@ export async function signIn(formData: FormData) {
   const redirectTo = String(formData.get("redirectedFrom") ?? "/dashboard");
 
   if (!username || !password) {
-    return { error: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu" };
+    return { error: "Please enter both username and password" };
   }
 
   // 1. Resolve username → user id
@@ -33,14 +33,14 @@ export async function signIn(formData: FormData) {
     .limit(1);
 
   if (!profile) {
-    return { error: "Tên đăng nhập hoặc mật khẩu không đúng" };
+    return { error: "Invalid username or password" };
   }
 
   // 2. Resolve user id → email (service-role bypasses RLS)
   const service = createServiceClient();
   const { data: userResp, error: userErr } = await service.auth.admin.getUserById(profile.id);
   if (userErr || !userResp?.user?.email) {
-    return { error: "Tên đăng nhập hoặc mật khẩu không đúng" };
+    return { error: "Invalid username or password" };
   }
 
   // 3. Sign in with the resolved email
@@ -50,7 +50,7 @@ export async function signIn(formData: FormData) {
     password,
   });
   if (error) {
-    return { error: "Tên đăng nhập hoặc mật khẩu không đúng" };
+    return { error: "Invalid username or password" };
   }
 
   revalidatePath("/", "layout");

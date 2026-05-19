@@ -7,4 +7,5 @@ const crud = makeCrud({
   requireAdminToWrite: true,
 });
 export const PATCH = crud.updateOne;
+export const PUT = crud.updateOne;
 export const DELETE = crud.deleteOne;

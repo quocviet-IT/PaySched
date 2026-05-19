@@ -20,19 +20,19 @@ export function DashboardView({ isAdmin, sessionUserId }: { isAdmin: boolean; se
   return (
     <div className="space-y-10">
       <header>
-        <span className="eyebrow mb-2">Tổng quan</span>
+        <span className="eyebrow mb-2">Overview</span>
         <h1 className="font-title text-[32px] leading-tight text-hp-ink">Dashboard</h1>
         <div className="mt-5 h-px bg-hp-rule" />
       </header>
 
       <div className="grid grid-cols-1 gap-px bg-hp-rule md:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Lịch chờ thanh toán" value={stats?.scheduled ?? 0} />
-        <StatCard label="Đến hạn trong 7 ngày" value={stats?.dueSoon ?? 0} />
-        <StatCard label="Quá hạn" value={stats?.overdue ?? 0} accent={(stats?.overdue ?? 0) > 0} />
+        <StatCard label="Scheduled" value={stats?.scheduled ?? 0} />
+        <StatCard label="Due in 7 days" value={stats?.dueSoon ?? 0} />
+        <StatCard label="Overdue" value={stats?.overdue ?? 0} accent={(stats?.overdue ?? 0) > 0} />
         <StatCard
-          label="Đã thanh toán tháng này"
+          label="Paid this month"
           value={formatCurrency(stats?.paidThisMonth ?? 0)}
-          sub={`${stats?.paidThisMonthCount ?? 0} giao dịch`}
+          sub={`${stats?.paidThisMonthCount ?? 0} payments`}
         />
       </div>
 
