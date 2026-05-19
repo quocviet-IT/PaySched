@@ -48,17 +48,28 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
     },
 
     createOne: async (req: NextRequest) => {
-      const session = await checkAuth();
-      const raw = await req.json().catch(() => ({}));
-      const parsed = insertSchema.safeParse(raw);
-      if (!parsed.success) {
-        return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
+      try {
+        const session = await checkAuth();
+        const raw = await req.json().catch(() => ({}));
+        const parsed = insertSchema.safeParse(raw);
+        if (!parsed.success) {
+          return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
+        }
+        let input = parsed.data;
+        if (cfg.transform) input = await cfg.transform(input, { userId: session.id });
+        const [row] = await db.insert(table).values(input).returning();
+        if (cfg.afterCreate) await cfg.afterCreate(row, { userId: session.id });
+        return NextResponse.json(row, { status: 201 });
+      } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        // Handle database constraint violations
+        if (errorMsg.includes("unique constraint")) {
+          return NextResponse.json({ message: "This record already exists" }, { status: 409 });
+        }
+        // Handle other database errors
+        console.error("[CRUD CREATE ERROR]", { error, message: errorMsg, stack: error?.stack });
+        return NextResponse.json({ message: errorMsg || "Failed to create record" }, { status: 500 });
       }
-      let input = parsed.data;
-      if (cfg.transform) input = await cfg.transform(input, { userId: session.id });
-      const [row] = await db.insert(table).values(input).returning();
-      if (cfg.afterCreate) await cfg.afterCreate(row, { userId: session.id });
-      return NextResponse.json(row, { status: 201 });
     },
 
     getOne: async (_req: NextRequest, { params }: { params: { id: string } }) => {
@@ -69,29 +80,44 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
     },
 
     updateOne: async (req: NextRequest, { params }: { params: { id: string } }) => {
-      await checkAuth();
-      const raw = await req.json().catch(() => ({}));
-      const parsed = updateSchema.safeParse(raw);
-      if (!parsed.success) {
-        return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
+      try {
+        await checkAuth();
+        const raw = await req.json().catch(() => ({}));
+        const parsed = updateSchema.safeParse(raw);
+        if (!parsed.success) {
+          return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
+        }
+        const [row] = await db
+          .update(table)
+          .set(parsed.data as any)
+          .where(eq((table as any).id, params.id))
+          .returning();
+        if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+        return NextResponse.json(row);
+      } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        if (errorMsg.includes("unique constraint")) {
+          return NextResponse.json({ message: "This record already exists" }, { status: 409 });
+        }
+        console.error("[CRUD UPDATE ERROR]", { error, message: errorMsg, stack: error?.stack });
+        return NextResponse.json({ message: errorMsg || "Failed to update record" }, { status: 500 });
       }
-      const [row] = await db
-        .update(table)
-        .set(parsed.data as any)
-        .where(eq((table as any).id, params.id))
-        .returning();
-      if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
-      return NextResponse.json(row);
     },
 
     deleteOne: async (_req: NextRequest, { params }: { params: { id: string } }) => {
-      await checkAuth();
-      const [row] = await db
-        .delete(table)
-        .where(eq((table as any).id, params.id))
-        .returning();
-      if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
-      return NextResponse.json({ ok: true });
+      try {
+        await checkAuth();
+        const [row] = await db
+          .delete(table)
+          .where(eq((table as any).id, params.id))
+          .returning();
+        if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
+        return NextResponse.json({ ok: true });
+      } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        console.error("[CRUD DELETE ERROR]", { error, message: errorMsg, stack: error?.stack });
+        return NextResponse.json({ message: errorMsg || "Failed to delete record" }, { status: 500 });
+      }
     },
   };
 }

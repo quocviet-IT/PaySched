@@ -18,7 +18,7 @@ import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { CsvImportDialog } from "./csv-import-dialog";
 import type {
-  PaymentSchedule, InternalCompany, PaymentAccount, PaymentType, ExpenseType,
+  PaymentSchedule, InternalCompany, PaymentAccount, PaymentType, ExpenseType, Vendor,
 } from "@shared/schema";
 
 const FREQUENCIES = [
@@ -65,6 +65,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
   const { data: accounts = [] } = useQuery<PaymentAccount[]>({ queryKey: ["/api/payment-accounts"] });
   const { data: paymentTypes = [] } = useQuery<PaymentType[]>({ queryKey: ["/api/payment-types"] });
   const { data: expenseTypes = [] } = useQuery<ExpenseType[]>({ queryKey: ["/api/expense-types"] });
+  const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
 
   const cName = (id: string) => companies.find((c) => c.id === id)?.name ?? "—";
 
@@ -198,6 +199,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
         accounts={accounts}
         paymentTypes={paymentTypes}
         expenseTypes={expenseTypes}
+        vendors={vendors}
       />
 
       <RecordPaymentDialog
@@ -211,7 +213,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
 
 // ============ Add / Edit Schedule ============
 function ScheduleDialog({
-  open, editing, onClose, companies, accounts, paymentTypes, expenseTypes,
+  open, editing, onClose, companies, accounts, paymentTypes, expenseTypes, vendors,
 }: {
   open: boolean;
   editing: PaymentSchedule | null;
@@ -220,6 +222,7 @@ function ScheduleDialog({
   accounts: PaymentAccount[];
   paymentTypes: PaymentType[];
   expenseTypes: ExpenseType[];
+  vendors: Vendor[];
 }) {
   const qc = useQueryClient();
   const [form, setForm] = React.useState({
@@ -278,13 +281,34 @@ function ScheduleDialog({
         <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label htmlFor="sched-vendor">Vendor Name</Label>
-            <Input id="sched-vendor" required value={form.vendorName}
-              onChange={(e) => setForm({ ...form, vendorName: e.target.value })} />
+            <Select
+              value={form.vendorName}
+              onValueChange={(v) => {
+                const picked = vendors.find((x) => x.name === v);
+                setForm({
+                  ...form,
+                  vendorName: v,
+                  vendorAbbreviation: picked?.abbreviation ?? "",
+                });
+              }}
+            >
+              <SelectTrigger id="sched-vendor"><SelectValue placeholder="Select vendor" /></SelectTrigger>
+              <SelectContent>
+                {vendors.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-hp-muted">
+                    No vendors yet — add one in Settings.
+                  </div>
+                ) : (
+                  vendors.map((v) => (
+                    <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="sched-vabbr">Vendor Abbreviation</Label>
-            <Input id="sched-vabbr" required value={form.vendorAbbreviation}
-              onChange={(e) => setForm({ ...form, vendorAbbreviation: e.target.value.toUpperCase() })}
+            <Input id="sched-vabbr" readOnly value={form.vendorAbbreviation}
               placeholder="VENDOR" />
           </div>
           <div className="space-y-2">
