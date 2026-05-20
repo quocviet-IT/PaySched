@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, FileSpreadsheet, FileDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,72 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
     return s?.vendorName ?? r.expenseId;
   };
 
+  const buildExportRows = () =>
+    filtered.map((r) => [
+      formatDate(r.paymentDate),
+      vendorOf(r),
+      `$${Number(r.amount).toFixed(2)}`,
+      r.paymentMethod,
+      r.daysLate > 0 ? `${r.daysLate}d` : "—",
+    ]);
+
+  const EXPORT_HEADERS = ["Date", "Vendor", "Amount", "Method", "Days Late"];
+
+  const handleExportCSV = () => {
+    if (filtered.length === 0) {
+      toast({ title: "Nothing to export", description: "No payments match the current filter." });
+      return;
+    }
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const lines = [EXPORT_HEADERS, ...buildExportRows()].map((row) => row.map(escape).join(","));
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `payment-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV downloaded" });
+  };
+
+  const handleExportPDF = async () => {
+    if (filtered.length === 0) {
+      toast({ title: "Nothing to export", description: "No payments match the current filter." });
+      return;
+    }
+    try {
+      const [{ default: jsPDF }, autoTableModule] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+      const autoTable: any = (autoTableModule as any).default ?? autoTableModule;
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
+
+      doc.setFontSize(20);
+      doc.text("Payment History", 40, 50);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Generated ${new Date().toLocaleString()}`, 40, 70);
+
+      autoTable(doc, {
+        head: [EXPORT_HEADERS],
+        body: buildExportRows(),
+        startY: 90,
+        styles: { fontSize: 10, cellPadding: 6, lineColor: [225, 225, 225] },
+        headStyles: { fillColor: [41, 70, 147], textColor: 255, fontSize: 11, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        columnStyles: { 2: { halign: "right" }, 4: { halign: "center" } },
+      });
+
+      doc.save(`payment-history-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast({ title: "PDF downloaded" });
+    } catch (e: any) {
+      toast({ title: "Failed to export PDF", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -55,6 +121,12 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
             <Label htmlFor="hist-to">To</Label>
             <Input id="hist-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
           </div>
+          <Button variant="secondary" size="sm" onClick={handleExportCSV}>
+            <FileSpreadsheet className="h-3.5 w-3.5" />Export CSV
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => void handleExportPDF()}>
+            <FileDown className="h-3.5 w-3.5" />Export PDF
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
