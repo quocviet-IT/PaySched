@@ -6,6 +6,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { profiles } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { logAudit } from "@/lib/crud";
 
 /**
  * Sign in by username (not email). Steps:
@@ -27,7 +28,7 @@ export async function signIn(formData: FormData) {
 
   // 1. Resolve username → user id
   const [profile] = await db
-    .select({ id: profiles.id })
+    .select({ id: profiles.id, username: profiles.username })
     .from(profiles)
     .where(eq(profiles.username, username))
     .limit(1);
@@ -50,9 +51,11 @@ export async function signIn(formData: FormData) {
     password,
   });
   if (error) {
+    await logAudit(profile.id, profile.username, "login_failed", "users", profile.id, "Invalid password");
     return { error: "Invalid username or password" };
   }
 
+  await logAudit(profile.id, profile.username, "login", "users", profile.id);
   revalidatePath("/", "layout");
   redirect(redirectTo);
 }
