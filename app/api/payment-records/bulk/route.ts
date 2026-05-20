@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -64,14 +64,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Invalid items", errors: parsed.error.flatten() }, { status: 400 });
   }
 
+  // Pre-fetch all referenced schedules in one query instead of N queries inside the loop.
+  const scheduleIds = Array.from(
+    new Set(
+      parsed.data
+        .map((it) => it.paymentScheduleId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  );
+  const scheduleMap = new Map<string, PaymentSchedule>();
+  if (scheduleIds.length > 0) {
+    const rows = await db
+      .select()
+      .from(paymentSchedules)
+      .where(inArray(paymentSchedules.id, scheduleIds));
+    for (const s of rows) scheduleMap.set(s.id, s);
+  }
+
   const created = [] as any[];
   for (const item of parsed.data) {
     const scheduleId = item.paymentScheduleId ?? null;
-    let schedule: PaymentSchedule | null = null;
-    if (scheduleId) {
-      const [s] = await db.select().from(paymentSchedules).where(eq(paymentSchedules.id, scheduleId)).limit(1);
-      schedule = s ?? null;
-    }
+    const schedule: PaymentSchedule | null = scheduleId ? scheduleMap.get(scheduleId) ?? null : null;
     const internalCompanyId = item.internalCompanyId ?? schedule?.internalCompanyId;
     const expenseId = schedule?.expenseId ?? item.expenseId;
     if (!internalCompanyId || !expenseId) {

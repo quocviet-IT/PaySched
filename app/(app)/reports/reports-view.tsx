@@ -35,11 +35,18 @@ function computeIssues(
 ): Issue[] {
   const now = new Date();
   const companyMap = new Map(companies.map((c) => [c.id, c]));
-  const recordsByExpense = new Map<string, PaymentRecord[]>();
+
+  // Pre-build O(1) lookup maps so the late-payment loop below is O(N) instead of O(N*M).
+  const schedulesById = new Map(schedules.map((s) => [s.id, s]));
+  const schedulesByExpense = new Map(schedules.map((s) => [s.expenseId, s]));
+
+  // Track each schedule's latest payment record in a single pass over records.
+  const latestByExpense = new Map<string, PaymentRecord>();
   for (const r of records) {
-    const bucket = recordsByExpense.get(r.expenseId) ?? [];
-    bucket.push(r);
-    recordsByExpense.set(r.expenseId, bucket);
+    const prev = latestByExpense.get(r.expenseId);
+    if (!prev || new Date(r.paymentDate) > new Date(prev.paymentDate)) {
+      latestByExpense.set(r.expenseId, r);
+    }
   }
 
   const issues: Issue[] = [];
@@ -49,10 +56,7 @@ function computeIssues(
     const company = companyMap.get(s.internalCompanyId);
     const dueDate = new Date(s.nextDueDate);
     const scheduleAmount = Number.parseFloat(s.amount);
-    const recs = recordsByExpense.get(s.expenseId) ?? [];
-    const latest = recs.slice().sort(
-      (a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
-    )[0];
+    const latest = latestByExpense.get(s.expenseId);
 
     if (dueDate < now) {
       issues.push({ type: "overdue", schedule: s, companyName: company?.name, detail: `Due ${formatDate(dueDate)}` });
@@ -78,8 +82,8 @@ function computeIssues(
   for (const r of records) {
     if (!r.daysLate || r.daysLate <= 0) continue;
     const schedule = r.paymentScheduleId
-      ? schedules.find((s) => s.id === r.paymentScheduleId)
-      : schedules.find((s) => s.expenseId === r.expenseId);
+      ? schedulesById.get(r.paymentScheduleId)
+      : schedulesByExpense.get(r.expenseId);
     if (!schedule) continue;
     const company = companyMap.get(schedule.internalCompanyId) ?? companyMap.get(r.internalCompanyId);
     const dueDate = r.scheduledDueDate ? new Date(r.scheduledDueDate) : null;

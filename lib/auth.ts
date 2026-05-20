@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import { db } from "./db";
@@ -13,7 +14,14 @@ export interface SessionUser {
   role: Role;
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+/**
+ * Cached per request: layout + page both call `requireUser()`, and the
+ * settings/users pages also call it. Without React's `cache()` each call
+ * issues a fresh Supabase Auth round-trip + profile DB query — 2 RTTs ×
+ * N callers per page load. With cache, the second+ calls return the
+ * same in-flight Promise.
+ */
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   const supabase = createClient();
   const {
     data: { user },
@@ -32,7 +40,7 @@ export async function getSession(): Promise<SessionUser | null> {
     username: profile?.username ?? user.email ?? "",
     role: (profile?.role as Role) ?? "User",
   };
-}
+});
 
 export async function requireUser(): Promise<SessionUser> {
   const session = await getSession();
