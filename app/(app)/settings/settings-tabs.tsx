@@ -40,6 +40,7 @@ export function SettingsTabs({ isAdmin }: { isAdmin: boolean }) {
         <TabsTrigger value="payment-types">Payment Types</TabsTrigger>
         <TabsTrigger value="expense-types">Expense Types</TabsTrigger>
         {isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
+        <TabsTrigger value="account">Account</TabsTrigger>
       </TabsList>
 
       <TabsContent value="companies"><CompaniesManager isAdmin={isAdmin} /></TabsContent>
@@ -49,6 +50,7 @@ export function SettingsTabs({ isAdmin }: { isAdmin: boolean }) {
       <TabsContent value="payment-types"><PaymentTypesManager isAdmin={isAdmin} /></TabsContent>
       <TabsContent value="expense-types"><ExpenseTypesManager isAdmin={isAdmin} /></TabsContent>
       {isAdmin && <TabsContent value="users"><UsersManager /></TabsContent>}
+      <TabsContent value="account"><AccountManager /></TabsContent>
     </Tabs>
   );
 }
@@ -793,12 +795,140 @@ function UsersManager() {
                   <TableCell className="text-hp-muted">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                   </TableCell>
-                  <TableCell><RowDelete onClick={() => del.mutate(u.id)} /></TableCell>
+                  <TableCell className="flex gap-1">
+                    <EditUserButton user={u} />
+                    <RowDelete onClick={() => del.mutate(u.id)} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EditUserButton({ user }: { user: Profile }) {
+  const invalidate = useInvalidator("/api/users");
+  const [open, setOpen] = React.useState(false);
+  const [password, setPassword] = React.useState("");
+  const [role, setRole] = React.useState<"Admin" | "User">(user.role as "Admin" | "User");
+
+  React.useEffect(() => {
+    if (open) {
+      setPassword("");
+      setRole(user.role as "Admin" | "User");
+    }
+  }, [open, user.role]);
+
+  const save = useMutation({
+    mutationFn: (body: { password?: string; role?: "Admin" | "User" }) =>
+      apiRequest("PATCH", `/api/users/${user.id}`, body),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "User updated" });
+      setOpen(false);
+    },
+    onError: (e: Error) => toast({ title: "Failed to update", description: e.message, variant: "destructive" }),
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const body: { password?: string; role?: "Admin" | "User" } = {};
+    if (password.trim()) body.password = password;
+    if (role !== user.role) body.role = role;
+    if (Object.keys(body).length === 0) {
+      toast({ title: "Nothing to change" });
+      return;
+    }
+    save.mutate(body);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Edit user">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit {user.username}</DialogTitle></DialogHeader>
+        <form className="space-y-6" onSubmit={submit}>
+          <div className="space-y-2">
+            <Label htmlFor="edit-user-password">New password (leave blank to keep current)</Label>
+            <Input id="edit-user-password" type="password" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 4 characters" />
+          </div>
+          <FieldSelect label="Role" value={role} onChange={(v) => setRole(v as "Admin" | "User")}>
+            <SelectItem value="User">User</SelectItem>
+            <SelectItem value="Admin">Admin</SelectItem>
+          </FieldSelect>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={save.isPending}>{save.isPending ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ Account (self-service password change) ============
+function AccountManager() {
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+
+  const change = useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      apiRequest("POST", "/api/me/password", body),
+    onSuccess: () => {
+      toast({ title: "Password updated" });
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    },
+    onError: (e: Error) => toast({ title: "Failed to update", description: e.message, variant: "destructive" }),
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 4) {
+      toast({ title: "Password too short", description: "At least 4 characters", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    change.mutate({ currentPassword, newPassword });
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>Change Password</CardTitle></CardHeader>
+      <CardContent>
+        <form onSubmit={submit} className="max-w-md space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="acc-current">Current password</Label>
+            <Input id="acc-current" type="password" required value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="acc-new">New password</Label>
+            <Input id="acc-new" type="password" required value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="At least 4 characters" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="acc-confirm">Confirm new password</Label>
+            <Input id="acc-confirm" type="password" required value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)} />
+          </div>
+          <Button type="submit" disabled={change.isPending}>
+            {change.isPending ? "Updating…" : "Update Password"}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );

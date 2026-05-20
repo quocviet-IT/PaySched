@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { profiles } from "@shared/schema";
 import { createServiceClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/crud";
 
 export async function GET() {
   await requireAdmin();
@@ -26,7 +27,7 @@ const createSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = createSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
@@ -55,5 +56,6 @@ export async function POST(req: NextRequest) {
     .set({ role, username })
     .where(eq(profiles.id, data.user.id));
 
+  await logAudit(session.id, session.username, "create", "users", data.user.id, `${username} (${role})`);
   return NextResponse.json({ id: data.user.id, username, role }, { status: 201 });
 }
