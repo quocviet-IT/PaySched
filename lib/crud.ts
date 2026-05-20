@@ -147,7 +147,9 @@ export async function logAudit(
       insert into public.audit_log (user_id, username, action, entity_type, entity_id, details)
       values (${userId}, ${username}, ${action}, ${entityType}, ${entityId}, ${details ?? null})
     `);
-  } catch {
-    // swallow — audit failures must never block user actions
+    console.log("[AUDIT]", { action, entityType, entityId, username });
+  } catch (err: any) {
+    // Log but never block the user action.
+    console.error("[AUDIT FAILED]", { action, entityType, entityId, username, error: err?.message ?? String(err) });
   }
 }
