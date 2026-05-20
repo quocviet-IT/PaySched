@@ -100,20 +100,22 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
           <CardTitle>Payment Schedules</CardTitle>
           <p className="text-sm text-hp-muted">Manage vendors and recurring payment schedules.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-hp-muted" />
             <Input
-              className="pl-7 w-64"
+              className="pl-7 w-full"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search vendor, company…"
             />
           </div>
-          <CsvImportDialog />
-          <Button onClick={() => { setEditing(null); setOpen(true); }}>
-            <Plus className="h-3.5 w-3.5" />Add Schedule
-          </Button>
+          <div className="flex gap-3">
+            <CsvImportDialog />
+            <Button onClick={() => { setEditing(null); setOpen(true); }}>
+              <Plus className="h-3.5 w-3.5" />Add Schedule
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -470,7 +472,7 @@ function RecordPaymentDialog({
           </p>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="rec-date">Payment Date</Label>
               <Input id="rec-date" required type="date" value={form.paymentDate}
@@ -483,7 +485,7 @@ function RecordPaymentDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="rec-method">Payment Method</Label>
               <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>

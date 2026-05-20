@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { Logo } from "@/components/logo";
+import { MobileNav } from "@/components/mobile-nav";
 
 const BASE_NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -20,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-hp-foundation">
-      <aside className="w-60 border-r border-hp-rule bg-hp-card">
+      <aside className="hidden md:flex md:flex-col w-60 border-r border-hp-rule bg-hp-card">
         <div className="h-20 border-b border-hp-rule px-6 flex items-center">
           <Logo size="sm" />
         </div>
@@ -42,18 +43,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </nav>
       </aside>
 
-      <main className="flex-1 flex flex-col">
-        <header className="h-20 border-b border-hp-rule bg-hp-card px-8 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <span className="eyebrow">Signed in</span>
-            <div className="font-body text-sm text-hp-ink">
-              {user.email}
-              <span className="text-hp-muted"> · {user.role}</span>
+      <main className="flex-1 flex flex-col min-w-0">
+        <header className="h-20 border-b border-hp-rule bg-hp-card px-4 sm:px-8 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <MobileNav nav={nav} />
+            <div className="md:hidden">
+              <Logo size="sm" />
+            </div>
+            <div className="hidden sm:block space-y-0.5 min-w-0">
+              <span className="eyebrow">Signed in</span>
+              <div className="font-body text-sm text-hp-ink truncate">
+                {user.email}
+                <span className="text-hp-muted"> · {user.role}</span>
+              </div>
             </div>
           </div>
           <LogoutButton />
         </header>
-        <div className="flex-1 px-8 py-10">
+        <div className="flex-1 px-4 sm:px-8 py-6 sm:py-10">
           <div className="max-w-7xl mx-auto">{children}</div>
         </div>
       </main>

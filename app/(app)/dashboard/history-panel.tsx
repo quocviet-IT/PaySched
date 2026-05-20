@@ -112,21 +112,25 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
           <CardTitle>Payment History</CardTitle>
           <p className="text-sm text-hp-muted">All recorded payments.</p>
         </div>
-        <div className="flex items-end gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="hist-from">From</Label>
-            <Input id="hist-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+        <div className="flex flex-col sm:flex-row sm:items-end flex-wrap gap-3 w-full sm:w-auto">
+          <div className="flex gap-3">
+            <div className="space-y-1 flex-1 sm:flex-none">
+              <Label htmlFor="hist-from">From</Label>
+              <Input id="hist-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full sm:w-40" />
+            </div>
+            <div className="space-y-1 flex-1 sm:flex-none">
+              <Label htmlFor="hist-to">To</Label>
+              <Input id="hist-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full sm:w-40" />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="hist-to">To</Label>
-            <Input id="hist-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+          <div className="flex gap-3">
+            <Button variant="secondary" size="sm" onClick={handleExportCSV}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />Export CSV
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => void handleExportPDF()}>
+              <FileDown className="h-3.5 w-3.5" />Export PDF
+            </Button>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleExportCSV}>
-            <FileSpreadsheet className="h-3.5 w-3.5" />Export CSV
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => void handleExportPDF()}>
-            <FileDown className="h-3.5 w-3.5" />Export PDF
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
