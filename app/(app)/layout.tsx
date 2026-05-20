@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { Logo } from "@/components/logo";
 
-const NAV = [
+const BASE_NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/reports", label: "Reports" },
   { href: "/settings", label: "Settings" },
@@ -12,7 +12,11 @@ const NAV = [
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const nav = NAV;
+  const nav = [
+    ...BASE_NAV,
+    ...(user.role === "Admin" ? [{ href: "/users", label: "Users" }] : []),
+    { href: "/account", label: "Account" },
+  ];
 
   return (
     <div className="flex min-h-screen bg-hp-foundation">
