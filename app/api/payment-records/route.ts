@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/crud";
 import {
   paymentRecords,
+  paymentRecordAudits,
   paymentSchedules,
   insertPaymentRecordSchema,
   type PaymentSchedule,
@@ -117,5 +118,13 @@ export async function POST(req: NextRequest) {
   }
 
   await logAudit(session.id, session.username, "create", "payment_records", row.id, `${row.expenseId} · $${row.amount}`);
+  await db.insert(paymentRecordAudits).values({
+    paymentRecordId: row.id,
+    action: "create",
+    reason: "Record created",
+    beforeSnapshot: {},
+    afterSnapshot: row,
+    performedBy: session.id,
+  });
   return NextResponse.json(row, { status: 201 });
 }

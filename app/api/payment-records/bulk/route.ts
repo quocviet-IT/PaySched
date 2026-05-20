@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { paymentRecords, paymentSchedules, type PaymentSchedule } from "@shared/schema";
+import { logAudit } from "@/lib/crud";
+import { paymentRecords, paymentRecordAudits, paymentSchedules, type PaymentSchedule } from "@shared/schema";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -100,11 +101,28 @@ export async function POST(req: NextRequest) {
     }).returning();
     created.push(row);
 
+    await db.insert(paymentRecordAudits).values({
+      paymentRecordId: row.id,
+      action: "create",
+      reason: "Bulk CSV import",
+      beforeSnapshot: {},
+      afterSnapshot: row,
+      performedBy: session.id,
+    });
+
     if (schedule) {
       const update = deriveScheduleUpdate(schedule, paymentDate);
       if (update) await db.update(paymentSchedules).set(update as any).where(eq(paymentSchedules.id, schedule.id));
     }
   }
 
+  await logAudit(
+    session.id,
+    session.username,
+    "bulk_create",
+    "payment_records",
+    null,
+    `Imported ${created.length} record(s) via CSV`,
+  );
   return NextResponse.json(created, { status: 201 });
 }
