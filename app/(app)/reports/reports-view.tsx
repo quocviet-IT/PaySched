@@ -25,58 +25,6 @@ interface Issue {
   daysLate?: number;
 }
 
-type Timeframe = "week" | "month" | "quarter" | "year";
-const TIMEFRAMES: { value: Timeframe; label: string; days: number }[] = [
-  { value: "week", label: "Next 7 Days", days: 7 },
-  { value: "month", label: "Next 30 Days", days: 30 },
-  { value: "quarter", label: "Next 90 Days", days: 90 },
-  { value: "year", label: "Next 12 Months", days: 365 },
-];
-
-interface UpcomingGroup {
-  companyId: string;
-  companyName: string;
-  totalAmount: number;
-  scheduledCount: number;
-  soonestDue: Date;
-}
-
-function computeUpcomingByCompany(
-  schedules: PaymentSchedule[],
-  companies: InternalCompany[],
-  windowEnd: Date,
-): UpcomingGroup[] {
-  const now = new Date();
-  const companyMap = new Map(companies.map((c) => [c.id, c]));
-  const groups = new Map<string, UpcomingGroup>();
-
-  for (const s of schedules) {
-    if (s.status === "completed") continue;
-    const due = new Date(s.nextDueDate);
-    if (due < now || due > windowEnd) continue;
-    const company = companyMap.get(s.internalCompanyId);
-    if (!company) continue;
-
-    const existing = groups.get(company.id);
-    const amount = Number.parseFloat(s.amount) || 0;
-    if (existing) {
-      existing.totalAmount += amount;
-      existing.scheduledCount += 1;
-      if (due < existing.soonestDue) existing.soonestDue = due;
-    } else {
-      groups.set(company.id, {
-        companyId: company.id,
-        companyName: company.name,
-        totalAmount: amount,
-        scheduledCount: 1,
-        soonestDue: due,
-      });
-    }
-  }
-
-  return Array.from(groups.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-}
-
 const TOLERANCE = 0.01;
 const PRIORITY: Record<IssueType, number> = { overdue: 0, late: 1, underpaid: 2, overpaid: 3 };
 
@@ -156,27 +104,10 @@ export function ReportsView() {
   const { data: records = [] } = useQuery<PaymentRecord[]>({ queryKey: ["/api/payment-records"] });
   const { data: companies = [] } = useQuery<InternalCompany[]>({ queryKey: ["/api/internal-companies"] });
 
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("month");
-
   const issues = React.useMemo(
     () => computeIssues(schedules, records, companies),
     [schedules, records, companies],
   );
-
-  const { upcoming, windowStart, windowEnd } = React.useMemo(() => {
-    const tf = TIMEFRAMES.find((t) => t.value === timeframe) ?? TIMEFRAMES[1];
-    const start = new Date();
-    const end = new Date(start);
-    end.setDate(end.getDate() + tf.days);
-    return {
-      upcoming: computeUpcomingByCompany(schedules, companies, end),
-      windowStart: start,
-      windowEnd: end,
-    };
-  }, [schedules, companies, timeframe]);
-
-  const upcomingTotal = upcoming.reduce((s, g) => s + g.totalAmount, 0);
-  const upcomingCount = upcoming.reduce((s, g) => s + g.scheduledCount, 0);
 
   const totalAll = (data?.byMonth ?? []).reduce((s, r) => s + r.total, 0);
   const totalCount = (data?.byMonth ?? []).reduce((s, r) => s + r.count, 0);
@@ -189,68 +120,6 @@ export function ReportsView() {
         <h1 className="font-title text-[32px] leading-tight text-hp-ink">Reports</h1>
         <div className="mt-5 h-px bg-hp-rule" />
       </header>
-
-      <Card>
-        <CardHeader>
-          <div className="space-y-1">
-            <CardTitle>Upcoming by company</CardTitle>
-            <p className="text-sm text-hp-muted">
-              {formatDate(windowStart)} → {formatDate(windowEnd)}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-1 bg-hp-inset p-1">
-            {TIMEFRAMES.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => setTimeframe(t.value)}
-                className={`px-3 py-1.5 uppercase tracking-eyebrow text-[11px] transition-colors ${
-                  timeframe === t.value
-                    ? "bg-hp-card text-hp-ink shadow-[0_1px_2px_rgba(42,39,37,0.08)]"
-                    : "text-hp-muted hover:text-hp-ink"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-hp-rule mb-5">
-            <Stat label="Companies" value={String(upcoming.length)} />
-            <Stat label="Due in timeframe" value={String(upcomingCount)} />
-            <Stat label="Total expected" value={formatCurrency(upcomingTotal)} />
-          </div>
-          {upcoming.length === 0 ? (
-            <p className="py-6 text-center text-sm text-hp-muted">
-              No scheduled payments in this timeframe.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Scheduled</TableHead>
-                  <TableHead>Soonest due</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {upcoming.map((g) => (
-                  <TableRow key={g.companyId}>
-                    <TableCell className="text-hp-ink">{g.companyName}</TableCell>
-                    <TableCell className="tabular-nums">{g.scheduledCount}</TableCell>
-                    <TableCell>{formatDate(g.soonestDue)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-hp-ink">
-                      {formatCurrency(g.totalAmount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 gap-px bg-hp-rule md:grid-cols-4">
         <Stat label="Total paid" value={formatCurrency(totalAll)} />
