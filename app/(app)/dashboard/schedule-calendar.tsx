@@ -305,7 +305,15 @@ export function ScheduleCalendar({ schedules, onRecordPayment }: Props) {
                     {formatCurrency(Number(o.schedule.amount))}
                   </div>
                   <Button size="sm" variant="secondary"
-                    onClick={() => { onRecordPayment(o.schedule); setPopoverDay(null); }}>
+                    onClick={() => {
+                      // Close the day popup first; defer opening the Record dialog
+                      // until after the popup's close animation so Radix doesn't
+                      // try to manage two open dialogs at once (which leaves the
+                      // backdrop interactive and Record looking unresponsive).
+                      setPopoverDay(null);
+                      const target = o.schedule;
+                      setTimeout(() => onRecordPayment(target), 250);
+                    }}>
                     Record
                   </Button>
                 </div>
