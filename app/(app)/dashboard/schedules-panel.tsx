@@ -18,6 +18,7 @@ import { toast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { CsvImportDialog } from "./csv-import-dialog";
+import { ScheduleCalendar } from "./schedule-calendar";
 import type {
   PaymentSchedule, InternalCompany, PaymentAccount, PaymentType, ExpenseType, Vendor,
 } from "@shared/schema";
@@ -133,8 +134,16 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
             <TabsTrigger value="due-soon">Due soon</TabsTrigger>
             <TabsTrigger value="overdue">Overdue</TabsTrigger>
             <TabsTrigger value="recurring">Recurring</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
           </TabsList>
           <TabsContent value={tab}>
+            {tab === "calendar" ? (
+              <ScheduleCalendar
+                schedules={schedules}
+                onRecordPayment={(s) => setRecordTarget(s)}
+              />
+            ) : (
+              <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -204,6 +213,8 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               onPageChange={setPage}
               onPageSizeChange={setPageSize}
             />
+              </>
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>
