@@ -53,7 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="hidden sm:block space-y-0.5 min-w-0">
               <span className="eyebrow">Signed in</span>
               <div className="font-body text-sm text-hp-ink truncate">
-                {user.email}
+                {user.username}
                 <span className="text-hp-muted"> · {user.role}</span>
               </div>
             </div>
