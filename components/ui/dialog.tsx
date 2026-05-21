@@ -30,11 +30,17 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, "aria-describedby": ariaDescribedBy, ...props }, ref) => (
   <DialogPrimitive.Portal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      // Radix logs a warning when neither a DialogDescription nor an explicit
+      // aria-describedby is provided. Most of our dialogs are simple forms
+      // without a separate description paragraph, so we default the attribute
+      // to undefined (an explicit opt-out) and let callers override when they
+      // do have a description to point at.
+      aria-describedby={ariaDescribedBy}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%]",
         "bg-hp-card border border-hp-rule p-8",
