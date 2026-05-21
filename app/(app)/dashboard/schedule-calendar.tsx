@@ -167,8 +167,9 @@ export function ScheduleCalendar({ schedules, onRecordPayment }: Props) {
             const isToday = key === todayKey;
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             const total = occs.reduce((s, o) => s + Number(o.schedule.amount), 0);
-            const hasOverdue = occs.some((o) => d < today);
+            const hasOverdue = occs.length > 0 && d < today;
 
+            const VISIBLE = 3;
             return (
               <button
                 key={key}
@@ -176,7 +177,8 @@ export function ScheduleCalendar({ schedules, onRecordPayment }: Props) {
                 onClick={() => occs.length > 0 && setPopoverDay(key)}
                 disabled={occs.length === 0}
                 className={`
-                  border-b border-r border-hp-rule min-h-[90px] p-2 text-left transition-colors
+                  border-b border-r border-hp-rule min-h-[120px] p-1.5 text-left transition-colors
+                  flex flex-col gap-1
                   ${inMonth ? "bg-hp-card" : "bg-hp-inset/50"}
                   ${isToday ? "ring-1 ring-hp-pink ring-inset" : ""}
                   ${isWeekend && inMonth ? "bg-hp-foundation" : ""}
@@ -184,25 +186,44 @@ export function ScheduleCalendar({ schedules, onRecordPayment }: Props) {
                   ${occs.length > 0 ? "hover:bg-hp-inset cursor-pointer" : "cursor-default"}
                 `}
               >
-                <div className={`text-[12px] tabular-nums ${
-                  isToday ? "text-hp-pink font-semibold" :
-                  inMonth ? "text-hp-ink" : "text-hp-muted"
-                }`}>
-                  {d.getDate()}
+                <div className="flex items-baseline justify-between gap-1">
+                  <span className={`text-[12px] tabular-nums ${
+                    isToday ? "text-hp-pink font-semibold" :
+                    inMonth ? "text-hp-ink" : "text-hp-muted"
+                  }`}>
+                    {d.getDate()}
+                  </span>
+                  {occs.length > 0 && (
+                    <span className="text-[9px] uppercase tracking-eyebrow text-hp-muted tabular-nums">
+                      {formatCurrency(total)}
+                    </span>
+                  )}
                 </div>
                 {occs.length > 0 && (
-                  <div className="mt-1 space-y-0.5">
-                    <div className="flex flex-wrap gap-0.5">
-                      {occs.slice(0, 3).map((_, i) => (
-                        <span key={i} className={`inline-block h-1.5 w-1.5 rounded-full ${hasOverdue ? "bg-hp-pink" : "bg-hp-ink"}`} />
-                      ))}
-                      {occs.length > 3 && (
-                        <span className="text-[10px] text-hp-muted ml-1">+{occs.length - 3}</span>
-                      )}
-                    </div>
-                    <div className="text-[11px] tabular-nums text-hp-body">
-                      {formatCurrency(total)}
-                    </div>
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    {occs.slice(0, VISIBLE).map((o, i) => {
+                      const chipOverdue = d < today;
+                      return (
+                        <div
+                          key={`${o.schedule.id}-${i}`}
+                          title={`${o.schedule.vendorName} · ${formatCurrency(Number(o.schedule.amount))}`}
+                          className={`
+                            text-[10px] truncate px-1.5 py-0.5 leading-tight
+                            border-l-2
+                            ${chipOverdue
+                              ? "bg-hp-pink/10 border-hp-pink text-hp-pink"
+                              : "bg-hp-ink/5 border-hp-ink text-hp-ink"}
+                          `}
+                        >
+                          <span className="truncate">{o.schedule.vendorName}</span>
+                        </div>
+                      );
+                    })}
+                    {occs.length > VISIBLE && (
+                      <div className="text-[10px] text-hp-muted px-1.5 font-body">
+                        +{occs.length - VISIBLE} more
+                      </div>
+                    )}
                   </div>
                 )}
               </button>
