@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Pagination } from "@/components/ui/pagination";
 
 interface AuditLogRow {
   id: string;
@@ -52,6 +53,10 @@ export function AuditView() {
 
 function GeneralAudit() {
   const { data = [], isLoading } = useQuery<AuditLogRow[]>({ queryKey: ["/api/audit"] });
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  React.useEffect(() => { setPage(1); }, [pageSize, data.length]);
+  const paged = data.slice((page - 1) * pageSize, page * pageSize);
   return (
     <Card>
       <CardHeader><CardTitle>200 most recent events</CardTitle></CardHeader>
@@ -61,32 +66,41 @@ function GeneralAudit() {
         ) : data.length === 0 ? (
           <p className="py-8 text-center text-sm text-hp-muted">No activity yet.</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Entity</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="tabular-nums text-xs text-hp-muted">
-                    {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
-                  </TableCell>
-                  <TableCell>{r.username ?? "—"}</TableCell>
-                  <TableCell className="uppercase tracking-eyebrow text-[11px] text-hp-ink">{r.action}</TableCell>
-                  <TableCell className="text-hp-muted">
-                    {r.entityType ? `${r.entityType}${r.entityId ? `:${r.entityId.slice(0, 8)}…` : ""}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-xs text-hp-body">{r.details ?? ""}</TableCell>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Entity</TableHead>
+                  <TableHead>Details</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {paged.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="tabular-nums text-xs text-hp-muted">
+                      {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
+                    </TableCell>
+                    <TableCell>{r.username ?? "—"}</TableCell>
+                    <TableCell className="uppercase tracking-eyebrow text-[11px] text-hp-ink">{r.action}</TableCell>
+                    <TableCell className="text-hp-muted">
+                      {r.entityType ? `${r.entityType}${r.entityId ? `:${r.entityId.slice(0, 8)}…` : ""}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-hp-body">{r.details ?? ""}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <Pagination
+              total={data.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </>
         )}
       </CardContent>
     </Card>
@@ -95,6 +109,10 @@ function GeneralAudit() {
 
 function RecordsAudit() {
   const { data = [], isLoading } = useQuery<RecordAudit[]>({ queryKey: ["/api/payment-record-audits"] });
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  React.useEffect(() => { setPage(1); }, [pageSize, data.length]);
+  const paged = data.slice((page - 1) * pageSize, page * pageSize);
   return (
     <Card>
       <CardHeader><CardTitle>Payment record edits and deletions</CardTitle></CardHeader>
@@ -104,6 +122,7 @@ function RecordsAudit() {
         ) : data.length === 0 ? (
           <p className="py-8 text-center text-sm text-hp-muted">No changes yet.</p>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -115,7 +134,7 @@ function RecordsAudit() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((r) => (
+              {paged.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="tabular-nums text-xs text-hp-muted">
                     {new Date(r.createdAt).toLocaleString()}
@@ -134,6 +153,14 @@ function RecordsAudit() {
               ))}
             </TableBody>
           </Table>
+          <Pagination
+            total={data.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+          </>
         )}
       </CardContent>
     </Card>

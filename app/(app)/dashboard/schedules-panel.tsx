@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import { toast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -59,6 +60,8 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
   const [editing, setEditing] = React.useState<PaymentSchedule | null>(null);
   const [open, setOpen] = React.useState(false);
   const [recordTarget, setRecordTarget] = React.useState<PaymentSchedule | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
 
   const { data: schedules = [] } = useQuery<PaymentSchedule[]>({ queryKey: ["/api/payment-schedules"] });
   const { data: companies = [] } = useQuery<InternalCompany[]>({ queryKey: ["/api/internal-companies"] });
@@ -92,6 +95,11 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
       || (tab === "recurring" && ["bi-weekly", "monthly", "quarterly", "yearly"].includes(s.frequency));
     return matchSearch && matchTab;
   });
+
+  // Reset to page 1 when filter changes so we don't land on an empty page.
+  React.useEffect(() => { setPage(1); }, [search, tab, pageSize]);
+
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <Card>
@@ -140,7 +148,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((s) => {
+                {paged.map((s) => {
                   const st = statusOf(s);
                   return (
                     <TableRow key={s.id}>
@@ -189,6 +197,13 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
                 )}
               </TableBody>
             </Table>
+            <Pagination
+              total={filtered.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>

@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import { toast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -22,6 +23,8 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
   const [to, setTo] = React.useState("");
   const [editing, setEditing] = React.useState<PaymentRecord | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
 
   const { data: records = [] } = useQuery<PaymentRecord[]>({ queryKey: ["/api/payment-records"] });
   const { data: schedules = [] } = useQuery<PaymentSchedule[]>({ queryKey: ["/api/payment-schedules"] });
@@ -32,6 +35,11 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
     if (to && d > new Date(to + "T23:59:59")) return false;
     return true;
   });
+
+  // Reset to page 1 whenever filter or page size changes so we don't land on an empty page.
+  React.useEffect(() => { setPage(1); }, [from, to, pageSize]);
+
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const vendorOf = (r: PaymentRecord) => {
     const s = schedules.find((x) => x.id === r.paymentScheduleId)
@@ -146,7 +154,7 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((r) => {
+            {paged.map((r) => {
               const canEdit = isAdmin || r.paidBy === sessionUserId;
               return (
                 <TableRow key={r.id}>
@@ -181,6 +189,13 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
             )}
           </TableBody>
         </Table>
+        <Pagination
+          total={filtered.length}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </CardContent>
 
       <RecordEditDialog record={editing} onClose={() => setEditing(null)} />
