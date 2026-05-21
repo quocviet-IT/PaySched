@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { Logo } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const BASE_NAV = [
   { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
@@ -65,7 +66,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
             </div>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
         </header>
         <div className="flex-1 px-4 sm:px-8 py-6 sm:py-10">
           <div className="max-w-7xl mx-auto">{children}</div>

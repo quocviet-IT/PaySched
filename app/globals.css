@@ -15,6 +15,28 @@
     --accent: #e91d79;
     --platinum: #bdc1c6;
   }
+
+  /* Dark mode — warm dark inversion that preserves the brand mood. */
+  html.dark {
+    --bg-foundation: #1a1815;
+    --surface-card: #221f1c;
+    --surface-inset: #14120f;
+    --ink-primary: #f5f0e8;
+    --ink-body: #c4bdb3;
+    --ink-muted: #8a8178;
+    --rule: #3a3530;
+    --accent: #ff4a96;
+    --platinum: #6b6f74;
+  }
+
+  /* Respect OS preference on first visit if no explicit choice is stored —
+     the inline script in layout.tsx handles this before hydration. */
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
 }
 
 @layer base {
