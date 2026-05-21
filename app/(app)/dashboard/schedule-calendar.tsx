@@ -280,49 +280,77 @@ export function ScheduleCalendar({ schedules, onRecordPayment }: Props) {
           )}
       </div>
 
-      {/* Day popup (shared by desktop) */}
+      {/* Day popup — register/spreadsheet style */}
       <Dialog open={popoverDay !== null} onOpenChange={(v) => !v && setPopoverDay(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {popoverDate?.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            {popoverOccurrences.map((o, i) => (
-              <div
-                key={`${o.schedule.id}-${i}`}
-                className="flex items-center justify-between p-3 border border-hp-rule"
-              >
-                <div className="min-w-0">
-                  <div className="text-hp-ink truncate">{o.schedule.vendorName}</div>
-                  <div className="text-[10px] uppercase tracking-eyebrow text-hp-muted">
-                    {o.schedule.expenseId} · {o.schedule.frequency}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="tabular-nums text-hp-ink text-sm">
-                    {formatCurrency(Number(o.schedule.amount))}
-                  </div>
-                  <Button size="sm" variant="secondary"
-                    onClick={() => {
-                      // Close the day popup first; defer opening the Record dialog
-                      // until after the popup's close animation so Radix doesn't
-                      // try to manage two open dialogs at once (which leaves the
-                      // backdrop interactive and Record looking unresponsive).
-                      setPopoverDay(null);
-                      const target = o.schedule;
-                      setTimeout(() => onRecordPayment(target), 250);
-                    }}>
-                    Record
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {popoverOccurrences.length === 0 && (
-              <p className="py-4 text-center text-sm text-hp-muted">No schedules.</p>
-            )}
-          </div>
+
+          {popoverOccurrences.length === 0 ? (
+            <p className="py-4 text-center text-sm text-hp-muted">No schedules.</p>
+          ) : (
+            <div className="border border-hp-rule">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-hp-inset border-b border-hp-rule">
+                    <th className="text-left px-3 py-2 uppercase tracking-eyebrow text-[10px] text-hp-muted font-normal border-r border-hp-rule">Date</th>
+                    <th className="text-left px-3 py-2 uppercase tracking-eyebrow text-[10px] text-hp-muted font-normal border-r border-hp-rule">Vendor</th>
+                    <th className="text-left px-3 py-2 uppercase tracking-eyebrow text-[10px] text-hp-muted font-normal border-r border-hp-rule">Expense ID</th>
+                    <th className="text-left px-3 py-2 uppercase tracking-eyebrow text-[10px] text-hp-muted font-normal border-r border-hp-rule">Frequency</th>
+                    <th className="text-right px-3 py-2 uppercase tracking-eyebrow text-[10px] text-hp-muted font-normal border-r border-hp-rule">Amount</th>
+                    <th className="w-24"><span className="sr-only">Action</span></th>
+                  </tr>
+                  {/* Total row — sticky highlight at top like the spreadsheet */}
+                  <tr className="bg-hp-pink/10 border-b-2 border-hp-pink">
+                    <td colSpan={4} className="px-3 py-2 uppercase tracking-eyebrow text-[11px] text-hp-ink font-semibold text-right border-r border-hp-rule">
+                      Total
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-hp-pink font-semibold border-r border-hp-rule">
+                      {formatCurrency(popoverOccurrences.reduce((s, o) => s + Number(o.schedule.amount), 0))}
+                    </td>
+                    <td />
+                  </tr>
+                </thead>
+                <tbody>
+                  {popoverOccurrences.map((o, i) => {
+                    const overdue = popoverDate ? popoverDate < today : false;
+                    return (
+                      <tr key={`${o.schedule.id}-${i}`} className={`border-b border-hp-rule last:border-b-0 ${overdue ? "bg-hp-pink/5" : ""}`}>
+                        <td className="px-3 py-2 tabular-nums text-hp-body border-r border-hp-rule whitespace-nowrap">
+                          {popoverDate ? popoverDate.toLocaleDateString() : ""}
+                        </td>
+                        <td className="px-3 py-2 text-hp-ink border-r border-hp-rule">
+                          {o.schedule.vendorName}
+                        </td>
+                        <td className="px-3 py-2 text-[11px] uppercase tracking-eyebrow text-hp-muted border-r border-hp-rule whitespace-nowrap">
+                          {o.schedule.expenseId}
+                        </td>
+                        <td className="px-3 py-2 text-[11px] uppercase tracking-eyebrow text-hp-muted border-r border-hp-rule">
+                          {o.schedule.frequency}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-hp-ink border-r border-hp-rule bg-amber-50/30">
+                          {formatCurrency(Number(o.schedule.amount))}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <Button size="sm" variant="secondary"
+                            onClick={() => {
+                              setPopoverDay(null);
+                              const target = o.schedule;
+                              setTimeout(() => onRecordPayment(target), 250);
+                            }}>
+                            Record
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
