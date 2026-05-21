@@ -8,6 +8,7 @@ import { Logo } from "@/components/logo";
 interface NavItem {
   href: string;
   label: string;
+  icon?: React.ReactNode;
 }
 
 export function MobileNav({ nav }: { nav: NavItem[] }) {
@@ -67,9 +68,10 @@ export function MobileNav({ nav }: { nav: NavItem[] }) {
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="px-4 py-2.5 uppercase tracking-eyebrow text-[11px] text-hp-body hover:text-hp-ink hover:bg-hp-inset transition-colors duration-150"
+                  className="px-4 py-2.5 uppercase tracking-eyebrow text-[11px] text-hp-body hover:text-hp-ink hover:bg-hp-inset transition-colors duration-150 flex items-center gap-3"
                 >
-                  {item.label}
+                  {item.icon}
+                  <span>{item.label}</span>
                 </Link>
               ))}
             </nav>

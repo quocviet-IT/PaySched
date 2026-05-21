@@ -1,22 +1,27 @@
 import Link from "next/link";
+import {
+  LayoutDashboard, BarChart3, Settings as SettingsIcon, ClipboardList, Users, UserCircle,
+} from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { Logo } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
 
 const BASE_NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/reports", label: "Reports" },
-  { href: "/settings", label: "Settings" },
-  { href: "/audit", label: "Audit" },
+  { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
+  { href: "/reports", label: "Reports", icon: <BarChart3 className="h-4 w-4 shrink-0" /> },
+  { href: "/settings", label: "Settings", icon: <SettingsIcon className="h-4 w-4 shrink-0" /> },
+  { href: "/audit", label: "Audit", icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const nav = [
     ...BASE_NAV,
-    ...(user.role === "Admin" ? [{ href: "/users", label: "Users" }] : []),
-    { href: "/account", label: "Account" },
+    ...(user.role === "Admin"
+      ? [{ href: "/users", label: "Users", icon: <Users className="h-4 w-4 shrink-0" /> }]
+      : []),
+    { href: "/account", label: "Account", icon: <UserCircle className="h-4 w-4 shrink-0" /> },
   ];
 
   return (
@@ -35,9 +40,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 uppercase tracking-eyebrow text-[11px] text-hp-body
                 hover:text-hp-ink hover:bg-hp-inset
                 transition-colors duration-150
+                flex items-center gap-3
               "
             >
-              {item.label}
+              {item.icon}
+              <span>{item.label}</span>
             </Link>
           ))}
         </nav>
