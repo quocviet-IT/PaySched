@@ -115,7 +115,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
           <p className="text-sm text-hp-muted">Manage vendors and recurring payment schedules.</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-hp-muted" />
             <Input
               className="pl-7 w-full"
@@ -124,8 +124,19 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               placeholder="Search vendor, company…"
             />
           </div>
+          <div className="flex gap-3">
+            <CsvImportDialog />
+            <Button onClick={() => { setEditing(null); setOpen(true); }}>
+              <Plus className="h-3.5 w-3.5" />Add Schedule
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="eyebrow text-hp-muted">Filter</span>
           <Select value={frequencyFilter} onValueChange={setFrequencyFilter}>
-            <SelectTrigger className="w-full sm:w-40">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Frequency" />
             </SelectTrigger>
             <SelectContent>
@@ -136,7 +147,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-36">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -147,15 +158,16 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               <SelectItem value="paid">Completed</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex gap-3">
-            <CsvImportDialog />
-            <Button onClick={() => { setEditing(null); setOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" />Add Schedule
+          {(frequencyFilter !== "all" || statusFilter !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setFrequencyFilter("all"); setStatusFilter("all"); }}
+            >
+              Clear filters
             </Button>
-          </div>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
