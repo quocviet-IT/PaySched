@@ -59,6 +59,8 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
   const qc = useQueryClient();
   const [search, setSearch] = React.useState("");
   const [tab, setTab] = React.useState("all");
+  const [frequencyFilter, setFrequencyFilter] = React.useState("all");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [editing, setEditing] = React.useState<PaymentSchedule | null>(null);
   const [open, setOpen] = React.useState(false);
   const [recordTarget, setRecordTarget] = React.useState<PaymentSchedule | null>(null);
@@ -95,11 +97,13 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
       || (tab === "due-soon" && st === "due-soon")
       || (tab === "overdue" && st === "overdue")
       || (tab === "recurring" && ["bi-weekly", "monthly", "quarterly", "yearly"].includes(s.frequency));
-    return matchSearch && matchTab;
+    const matchFrequency = frequencyFilter === "all" || s.frequency === frequencyFilter;
+    const matchStatus = statusFilter === "all" || st === statusFilter;
+    return matchSearch && matchTab && matchFrequency && matchStatus;
   });
 
   // Reset to page 1 when filter changes so we don't land on an empty page.
-  React.useEffect(() => { setPage(1); }, [search, tab, pageSize]);
+  React.useEffect(() => { setPage(1); }, [search, tab, frequencyFilter, statusFilter, pageSize]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -111,7 +115,7 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
           <p className="text-sm text-hp-muted">Manage vendors and recurring payment schedules.</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-56">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-hp-muted" />
             <Input
               className="pl-7 w-full"
@@ -120,6 +124,29 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               placeholder="Search vendor, company…"
             />
           </div>
+          <Select value={frequencyFilter} onValueChange={setFrequencyFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All frequencies</SelectItem>
+              {FREQUENCIES.map((f) => (
+                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-36">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="due-soon">Due soon</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="paid">Completed</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex gap-3">
             <CsvImportDialog />
             <Button onClick={() => { setEditing(null); setOpen(true); }}>
