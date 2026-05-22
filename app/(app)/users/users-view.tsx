@@ -41,8 +41,17 @@ export function UsersView() {
 
   const del = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/users/${id}`),
-    onSuccess: () => { invalidate(); toast({ title: "User deleted" }); },
-    onError: (e: Error) => toast({ title: "Failed to delete", description: e.message, variant: "destructive" }),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ["/api/users"] });
+      const prev = qc.getQueryData<Profile[]>(["/api/users"]);
+      qc.setQueryData<Profile[]>(["/api/users"], (old = []) => old.filter((u) => u.id !== id));
+      return { prev };
+    },
+    onSuccess: () => toast({ title: "User deleted" }),
+    onError: (e: Error, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["/api/users"], ctx.prev);
+      toast({ title: "Failed to delete", description: e.message, variant: "destructive" });
+    },
   });
 
   return (
