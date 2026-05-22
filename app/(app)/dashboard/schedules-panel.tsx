@@ -60,7 +60,6 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
   const [search, setSearch] = React.useState("");
   const [tab, setTab] = React.useState("all");
   const [frequencyFilter, setFrequencyFilter] = React.useState("all");
-  const [statusFilter, setStatusFilter] = React.useState("all");
   const [editing, setEditing] = React.useState<PaymentSchedule | null>(null);
   const [open, setOpen] = React.useState(false);
   const [recordTarget, setRecordTarget] = React.useState<PaymentSchedule | null>(null);
@@ -98,12 +97,11 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
       || (tab === "overdue" && st === "overdue")
       || (tab === "recurring" && ["bi-weekly", "monthly", "quarterly", "yearly"].includes(s.frequency));
     const matchFrequency = frequencyFilter === "all" || s.frequency === frequencyFilter;
-    const matchStatus = statusFilter === "all" || st === statusFilter;
-    return matchSearch && matchTab && matchFrequency && matchStatus;
+    return matchSearch && matchTab && matchFrequency;
   });
 
   // Reset to page 1 when filter changes so we don't land on an empty page.
-  React.useEffect(() => { setPage(1); }, [search, tab, frequencyFilter, statusFilter, pageSize]);
+  React.useEffect(() => { setPage(1); }, [search, tab, frequencyFilter, pageSize]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -143,23 +141,11 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full lg:w-44">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="scheduled">Scheduled</SelectItem>
-              <SelectItem value="due-soon">Due soon</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="paid">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-          {(search || frequencyFilter !== "all" || statusFilter !== "all") && (
+          {(search || frequencyFilter !== "all") && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setSearch(""); setFrequencyFilter("all"); setStatusFilter("all"); }}
+              onClick={() => { setSearch(""); setFrequencyFilter("all"); }}
             >
               Clear filters
             </Button>
