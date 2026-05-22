@@ -39,9 +39,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Username already exists" }, { status: 409 });
   }
 
+  // Supabase Auth requires a valid-looking email. The .local TLD is reserved
+  // (RFC 2606) and rejected as "invalid format"; .app is a real TLD that
+  // satisfies the validator. We also slugify the local-part so usernames
+  // with spaces/Unicode characters still produce a valid email.
+  const emailSlug = username
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    || "user";
+
   const service = createServiceClient();
   const { data, error } = await service.auth.admin.createUser({
-    email: `${username}@paysched.local`,
+    email: `${emailSlug}@paysched.app`,
     password,
     email_confirm: true,
     user_metadata: { username },
