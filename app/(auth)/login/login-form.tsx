@@ -15,6 +15,7 @@ export function LoginForm({ action, redirectedFrom, initialError }: Props) {
   return (
     <form
       className="space-y-7"
+      noValidate
       action={(formData) => {
         setError(undefined);
         startTransition(async () => {
