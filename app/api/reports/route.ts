@@ -14,7 +14,11 @@ export async function GET() {
 
   const cName = Object.fromEntries(companies.map((c) => [c.id, c.name]));
   const eName = Object.fromEntries(expenses.map((e) => [e.id, e.name]));
-  const scheduleExpenseTypeId = Object.fromEntries(schedules.map((s) => [s.id, s.expenseTypeId]));
+  // Two ways to find a record's expense type: by schedule id (preferred,
+  // present when paid via a schedule), and by expense_id (fallback for
+  // ad-hoc records or records whose schedule was later deleted).
+  const scheduleExpenseTypeById = Object.fromEntries(schedules.map((s) => [s.id, s.expenseTypeId]));
+  const scheduleExpenseTypeByExpenseId = Object.fromEntries(schedules.map((s) => [s.expenseId, s.expenseTypeId]));
 
   const byMonth: Record<string, { total: number; count: number }> = {};
   const byCompany: Record<string, number> = {};
@@ -32,7 +36,9 @@ export async function GET() {
     }
     const ck = cName[r.internalCompanyId] || "(none)";
     byCompany[ck] = (byCompany[ck] ?? 0) + amt;
-    const expenseTypeId = r.paymentScheduleId ? scheduleExpenseTypeId[r.paymentScheduleId] : undefined;
+    const expenseTypeId =
+      (r.paymentScheduleId && scheduleExpenseTypeById[r.paymentScheduleId]) ||
+      scheduleExpenseTypeByExpenseId[r.expenseId];
     const ek = (expenseTypeId && eName[expenseTypeId]) || "(none)";
     byExpense[ek] = (byExpense[ek] ?? 0) + amt;
   }
