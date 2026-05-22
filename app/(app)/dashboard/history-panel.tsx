@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Pencil, FileSpreadsheet, FileDown } from "lucide-react";
+import { Trash2, Pencil, FileSpreadsheet, FileDown, Search } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import type { PaymentRecord, PaymentSchedule } from "@shared/schema";
 export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; sessionUserId: string }) {
   const [from, setFrom] = React.useState("");
   const [to, setTo] = React.useState("");
+  const [search, setSearch] = React.useState("");
   const [editing, setEditing] = React.useState<PaymentRecord | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
@@ -33,11 +34,21 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
     const d = new Date(r.paymentDate);
     if (from && d < new Date(from)) return false;
     if (to && d > new Date(to + "T23:59:59")) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      const s = schedules.find((x) => x.id === r.paymentScheduleId)
+        ?? schedules.find((x) => x.expenseId === r.expenseId);
+      const haystack = [
+        s?.vendorName, r.expenseId,
+        r.checkNumber, r.referenceNumber, r.memo,
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
     return true;
   });
 
   // Reset to page 1 whenever filter or page size changes so we don't land on an empty page.
-  React.useEffect(() => { setPage(1); }, [from, to, pageSize]);
+  React.useEffect(() => { setPage(1); }, [from, to, search, pageSize]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -53,10 +64,13 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
       vendorOf(r),
       `$${Number(r.amount).toFixed(2)}`,
       r.paymentMethod,
+      r.checkNumber ?? "",
+      r.referenceNumber ?? "",
+      r.memo ?? "",
       r.daysLate > 0 ? `${r.daysLate}d` : "—",
     ]);
 
-  const EXPORT_HEADERS = ["Date", "Vendor", "Amount", "Method", "Days Late"];
+  const EXPORT_HEADERS = ["Date", "Vendor", "Amount", "Method", "Check #", "Reference #", "Memo", "Days Late"];
 
   const handleExportCSV = () => {
     if (filtered.length === 0) {
@@ -103,7 +117,7 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
         styles: { fontSize: 10, cellPadding: 6, lineColor: [225, 225, 225] },
         headStyles: { fillColor: [41, 70, 147], textColor: 255, fontSize: 11, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [245, 247, 250] },
-        columnStyles: { 2: { halign: "right" }, 4: { halign: "center" } },
+        columnStyles: { 2: { halign: "right" }, 7: { halign: "center" } },
       });
 
       doc.save(`payment-history-${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -121,6 +135,19 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
           <p className="text-sm text-hp-muted">All recorded payments.</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end flex-wrap gap-3 w-full sm:w-auto">
+          <div className="space-y-1 flex-1 sm:flex-none">
+            <Label htmlFor="hist-search">Search</Label>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-hp-muted" />
+              <Input
+                id="hist-search"
+                className="pl-7 w-full"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Vendor, check #, reference, memo…"
+              />
+            </div>
+          </div>
           <div className="flex gap-3">
             <div className="space-y-1 flex-1 sm:flex-none">
               <Label htmlFor="hist-from">From</Label>
@@ -149,6 +176,8 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
               <TableHead>Vendor</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Method</TableHead>
+              <TableHead>Check #</TableHead>
+              <TableHead>Reference</TableHead>
               <TableHead>Days Late</TableHead>
               <TableHead className="w-40" />
             </TableRow>
@@ -159,9 +188,20 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
               return (
                 <TableRow key={r.id}>
                   <TableCell className="tabular-nums">{formatDate(r.paymentDate)}</TableCell>
-                  <TableCell>{vendorOf(r)}</TableCell>
+                  <TableCell>
+                    <div className="text-hp-ink">{vendorOf(r)}</div>
+                    {r.memo && (
+                      <div className="text-[11px] text-hp-muted mt-0.5 truncate max-w-xs" title={r.memo}>
+                        {r.memo}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="tabular-nums text-hp-ink">{formatCurrency(Number(r.amount))}</TableCell>
                   <TableCell className="uppercase tracking-eyebrow text-[11px] text-hp-muted">{r.paymentMethod}</TableCell>
+                  <TableCell className="font-mono text-[12px] text-hp-body">{r.checkNumber || <span className="text-hp-muted">—</span>}</TableCell>
+                  <TableCell className="font-mono text-[12px] text-hp-body truncate max-w-[140px]" title={r.referenceNumber ?? ""}>
+                    {r.referenceNumber || <span className="text-hp-muted">—</span>}
+                  </TableCell>
                   <TableCell className={r.daysLate > 0 ? "text-hp-pink tabular-nums" : "text-hp-muted tabular-nums"}>
                     {r.daysLate > 0 ? `${r.daysLate}d` : "—"}
                   </TableCell>
@@ -183,7 +223,7 @@ export function HistoryPanel({ isAdmin, sessionUserId }: { isAdmin: boolean; ses
               );
             })}
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center py-10 text-hp-muted">
+              <TableRow><TableCell colSpan={8} className="text-center py-10 text-hp-muted">
                 No payments recorded yet.
               </TableCell></TableRow>
             )}

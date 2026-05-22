@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
     paymentAccountId: raw.paymentAccountId || null,
     confirmationFile: raw.confirmationFile ?? null,
     approvalScreenshot: raw.approvalScreenshot ?? null,
+    checkNumber: raw.checkNumber || null,
+    referenceNumber: raw.referenceNumber || null,
+    memo: raw.memo || null,
   });
   if (!parsed.success) {
     return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });
@@ -106,6 +109,9 @@ export async function POST(req: NextRequest) {
     paymentAccountId: data.paymentAccountId ?? null,
     confirmationFile: data.confirmationFile ?? null,
     approvalScreenshot: data.approvalScreenshot ?? null,
+    checkNumber: data.checkNumber ?? null,
+    referenceNumber: data.referenceNumber ?? null,
+    memo: data.memo ?? null,
     scheduledDueDate: rawDueDate,
     daysLate,
   }).returning();

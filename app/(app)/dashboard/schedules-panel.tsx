@@ -460,6 +460,9 @@ function RecordPaymentDialog({
     paymentMethod: "bank-transfer",
     paymentAccountId: "",
     approvedBy: "",
+    checkNumber: "",
+    referenceNumber: "",
+    memo: "",
   });
   const [confirmationFile, setConfirmationFile] = React.useState<File | null>(null);
   const [approvalScreenshot, setApprovalScreenshot] = React.useState<File | null>(null);
@@ -476,6 +479,9 @@ function RecordPaymentDialog({
         paymentMethod: "bank-transfer",
         paymentAccountId: target.paymentAccountId,
         approvedBy: "",
+        checkNumber: "",
+        referenceNumber: "",
+        memo: "",
       });
       setConfirmationFile(null);
       setApprovalScreenshot(null);
@@ -524,6 +530,9 @@ function RecordPaymentDialog({
       paymentMethod: form.paymentMethod,
       paymentAccountId: form.paymentAccountId || null,
       approvedBy: form.approvedBy || null,
+      checkNumber: form.checkNumber.trim() || null,
+      referenceNumber: form.referenceNumber.trim() || null,
+      memo: form.memo.trim() || null,
     });
   };
 
@@ -579,6 +588,40 @@ function RecordPaymentDialog({
                 {approvers.map((u) => <SelectItem key={u.id} value={u.id}>{u.username}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rec-check">Check Number (optional)</Label>
+              <Input
+                id="rec-check"
+                value={form.checkNumber}
+                onChange={(e) => setForm({ ...form, checkNumber: e.target.value })}
+                placeholder="e.g. 1357"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rec-ref">Reference Number (optional)</Label>
+              <Input
+                id="rec-ref"
+                value={form.referenceNumber}
+                onChange={(e) => setForm({ ...form, referenceNumber: e.target.value })}
+                placeholder="e.g. cfa026Unatr"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rec-memo">Memo / Notes (optional)</Label>
+            <textarea
+              id="rec-memo"
+              value={form.memo}
+              onChange={(e) => setForm({ ...form, memo: e.target.value })}
+              placeholder="e.g. TPM SBA loan Acct# 3971339107"
+              rows={2}
+              maxLength={500}
+              className="w-full border border-hp-rule bg-transparent px-2 py-1.5 text-sm font-body text-hp-body focus:outline-none focus:border-hp-pink"
+            />
           </div>
 
           <FileField

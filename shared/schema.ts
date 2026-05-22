@@ -162,6 +162,12 @@ export const paymentRecords = pgTable("payment_records", {
   /** Supabase Storage path, e.g. uploads/<userId>/<yyyy-mm>/<uuid>.<ext> */
   confirmationFile: text("confirmation_file"),
   approvalScreenshot: text("approval_screenshot"),
+  /** Physical check number when paid by check (e.g. "1357"). */
+  checkNumber: text("check_number"),
+  /** Bank/portal confirmation ID (e.g. "cfa026Unatr"). */
+  referenceNumber: text("reference_number"),
+  /** Free-text note (e.g. "TPM SBA loan Acct# 3971339107"). */
+  memo: text("memo"),
   scheduledDueDate: timestamp("scheduled_due_date"),
   daysLate: integer("days_late").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -174,6 +180,9 @@ export const insertPaymentRecordSchema = createInsertSchema(paymentRecords)
     amount: z.coerce.string().refine((v) => v !== "" && !Number.isNaN(Number(v)), "Invalid amount"),
     confirmationFile: z.string().nullable().optional(),
     approvalScreenshot: z.string().nullable().optional(),
+    checkNumber: z.string().trim().max(64).nullable().optional(),
+    referenceNumber: z.string().trim().max(128).nullable().optional(),
+    memo: z.string().trim().max(500).nullable().optional(),
   });
 
 export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
