@@ -136,6 +136,12 @@ export const insertPaymentScheduleSchema = createInsertSchema(paymentSchedules)
   .extend({
     nextDueDate: z.coerce.date(),
     amount: z.coerce.string().refine((v) => v !== "" && !Number.isNaN(Number(v)), "Invalid amount"),
+    vendorName: z.string().min(1, "Vendor is required"),
+    vendorAbbreviation: z.string().min(1, "Vendor abbreviation is required"),
+    internalCompanyId: z.string().min(1, "Internal company is required"),
+    paymentTypeId: z.string().min(1, "Payment type is required"),
+    paymentAccountId: z.string().min(1, "Payment account is required"),
+    expenseTypeId: z.string().min(1, "Expense type is required"),
   });
 
 export type InsertPaymentSchedule = z.infer<typeof insertPaymentScheduleSchema>;

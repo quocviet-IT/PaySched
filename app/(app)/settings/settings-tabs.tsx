@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { apiRequest } from "@/lib/api";
 import {
   ACCOUNT_TYPE_OPTIONS,
@@ -133,7 +134,14 @@ function CompaniesManager({ isAdmin }: { isAdmin: boolean }) {
                   <TableCell>{c.name}</TableCell>
                   <TableCell className="font-mono uppercase tracking-eyebrow text-[11px] text-hp-muted">{c.abbreviation}</TableCell>
                   <TableCell>
-                    {isAdmin && <RowDelete onClick={() => del.mutate(c.id)} />}
+                    {isAdmin && (
+                      <ConfirmDeleteButton
+                        entityLabel="company"
+                        name={c.name}
+                        onConfirm={() => del.mutate(c.id)}
+                        pending={del.isPending && del.variables === c.id}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -257,7 +265,14 @@ function VendorsManager({ isAdmin }: { isAdmin: boolean }) {
                     <Button size="icon" variant="ghost" onClick={() => startEdit(v)} aria-label="Edit">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    {isAdmin && <RowDelete onClick={() => del.mutate(v.id)} />}
+                    {isAdmin && (
+                      <ConfirmDeleteButton
+                        entityLabel="vendor"
+                        name={v.name}
+                        onConfirm={() => del.mutate(v.id)}
+                        pending={del.isPending && del.variables === v.id}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -474,7 +489,14 @@ function AccountsManager({ isAdmin }: { isAdmin: boolean }) {
                       <Button size="icon" variant="ghost" onClick={() => startEdit(a)} aria-label="Edit">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      {isAdmin && <RowDelete onClick={() => del.mutate(a.id)} />}
+                      {isAdmin && (
+                        <ConfirmDeleteButton
+                          entityLabel="account"
+                          name={a.name}
+                          onConfirm={() => del.mutate(a.id)}
+                          pending={del.isPending && del.variables === a.id}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -600,7 +622,14 @@ function MappingsManager({ isAdmin }: { isAdmin: boolean }) {
                         }}
                         aria-label="Edit"
                       ><Pencil className="h-3.5 w-3.5" /></Button>
-                      {isAdmin && <RowDelete onClick={() => del.mutate(m.id)} />}
+                      {isAdmin && (
+                        <ConfirmDeleteButton
+                          entityLabel="mapping"
+                          name={m.csvAccountName}
+                          onConfirm={() => del.mutate(m.id)}
+                          pending={del.isPending && del.variables === m.id}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -615,10 +644,11 @@ function MappingsManager({ isAdmin }: { isAdmin: boolean }) {
 
 // ============ Simple text-only managers (PaymentTypes, ExpenseTypes) ============
 function SimpleNameManager({
-  title, addLabel, endpoint, placeholder, isAdmin,
+  title, addLabel, entityLabel, endpoint, placeholder, isAdmin,
 }: {
   title: string;
   addLabel: string;
+  entityLabel: string;
   endpoint: string;
   placeholder: string;
   isAdmin: boolean;
@@ -676,7 +706,16 @@ function SimpleNameManager({
               {data.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.name}</TableCell>
-                  <TableCell>{isAdmin && <RowDelete onClick={() => del.mutate(row.id)} />}</TableCell>
+                  <TableCell>
+                    {isAdmin && (
+                      <ConfirmDeleteButton
+                        entityLabel={entityLabel}
+                        name={row.name}
+                        onConfirm={() => del.mutate(row.id)}
+                        pending={del.isPending && del.variables === row.id}
+                      />
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -692,6 +731,7 @@ function PaymentTypesManager({ isAdmin }: { isAdmin: boolean }) {
     <SimpleNameManager
       title="Payment Types"
       addLabel="Add Type"
+      entityLabel="payment type"
       endpoint="/api/payment-types"
       placeholder="ACH, Wire, Credit Card"
       isAdmin={isAdmin}
@@ -704,6 +744,7 @@ function ExpenseTypesManager({ isAdmin }: { isAdmin: boolean }) {
     <SimpleNameManager
       title="Expense Types"
       addLabel="Add Type"
+      entityLabel="expense type"
       endpoint="/api/expense-types"
       placeholder="Insurance, Rent, Subscriptions"
       isAdmin={isAdmin}
@@ -722,14 +763,6 @@ function Empty({ title, body }: { title: string; body: string }) {
       <p className="font-title text-lg text-hp-ink">{title}</p>
       <p className="mt-2 text-sm text-hp-muted">{body}</p>
     </div>
-  );
-}
-
-function RowDelete({ onClick }: { onClick: () => void }) {
-  return (
-    <Button size="icon" variant="ghost" onClick={onClick} aria-label="Delete">
-      <Trash2 className="h-3.5 w-3.5" />
-    </Button>
   );
 }
 

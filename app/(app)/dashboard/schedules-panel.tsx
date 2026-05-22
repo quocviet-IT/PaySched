@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Pencil, DollarSign, Search } from "lucide-react";
+import { Plus, Pencil, DollarSign, Search } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { toast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -188,10 +189,12 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         {isAdmin && (
-                          <Button size="icon" variant="ghost" aria-label="Delete"
-                            onClick={() => del.mutate(s.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <ConfirmDeleteButton
+                            entityLabel="schedule"
+                            name={s.vendorName}
+                            onConfirm={() => del.mutate(s.id)}
+                            pending={del.isPending && del.variables === s.id}
+                          />
                         )}
                       </TableCell>
                     </TableRow>
@@ -295,6 +298,20 @@ function ScheduleDialog({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const missing: string[] = [];
+    if (!form.vendorName) missing.push("Vendor");
+    if (!form.internalCompanyId) missing.push("Internal Company");
+    if (!form.paymentTypeId) missing.push("Payment Type");
+    if (!form.paymentAccountId) missing.push("Payment Account");
+    if (!form.expenseTypeId) missing.push("Expense Type");
+    if (missing.length) {
+      toast({
+        title: "Please fill in all required fields",
+        description: missing.join(", "),
+        variant: "destructive",
+      });
+      return;
+    }
     save.mutate({
       ...form,
       amount: Number(form.amount),

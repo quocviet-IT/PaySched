@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { apiRequest } from "@/lib/api";
 import type { Profile } from "@shared/schema";
 
@@ -109,8 +110,9 @@ export function UsersView() {
                   </TableCell>
                   <TableCell className="flex gap-1">
                     <EditUserButton user={u} onSaved={invalidate} />
-                    <DeleteUserButton
-                      user={u}
+                    <ConfirmDeleteButton
+                      entityLabel="user"
+                      name={u.username}
                       onConfirm={() => del.mutate(u.id)}
                       pending={del.isPending && del.variables === u.id}
                     />
@@ -122,52 +124,6 @@ export function UsersView() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function DeleteUserButton({
-  user,
-  onConfirm,
-  pending,
-}: {
-  user: Profile;
-  onConfirm: () => void;
-  pending: boolean;
-}) {
-  const [open, setOpen] = React.useState(false);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" aria-label="Delete">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete user</DialogTitle>
-        </DialogHeader>
-        <p className="font-body text-sm text-hp-body">
-          Are you sure you want to delete <span className="text-hp-ink">{user.username}</span>?
-          This action cannot be undone.
-        </p>
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              onConfirm();
-              setOpen(false);
-            }}
-          >
-            {pending ? "Deleting…" : "Delete"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
