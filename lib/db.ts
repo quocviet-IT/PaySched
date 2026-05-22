@@ -8,14 +8,10 @@ if (!connectionString) {
 }
 
 // `postgres-js` with prepare:false because Supabase's transaction pooler
-// (port 6543) does not support prepared statements. max=3 because each
-// serverless instance handles 1 request at a time; a higher pool just
-// burns Supabase pooler slots without speeding anything up.
+// (port 6543) does not support prepared statements.
 const client = postgres(connectionString, {
   prepare: false,
-  max: 3,
-  idle_timeout: 20,
-  connect_timeout: 10,
+  max: 1,
 });
 
 export const db = drizzle(client, { schema });
