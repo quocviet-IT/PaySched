@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { paymentRecords, internalCompanies, expenseTypes } from "@shared/schema";
+import { paymentRecords, paymentSchedules, internalCompanies, expenseTypes } from "@shared/schema";
 
 export async function GET() {
   await requireUser();
-  const [records, companies, expenses] = await Promise.all([
+  const [records, schedules, companies, expenses] = await Promise.all([
     db.select().from(paymentRecords),
+    db.select().from(paymentSchedules),
     db.select().from(internalCompanies),
     db.select().from(expenseTypes),
   ]);
 
   const cName = Object.fromEntries(companies.map((c) => [c.id, c.name]));
   const eName = Object.fromEntries(expenses.map((e) => [e.id, e.name]));
+  const scheduleExpenseTypeId = Object.fromEntries(schedules.map((s) => [s.id, s.expenseTypeId]));
 
   const byMonth: Record<string, { total: number; count: number }> = {};
   const byCompany: Record<string, number> = {};
@@ -30,7 +32,8 @@ export async function GET() {
     }
     const ck = cName[r.internalCompanyId] || "(none)";
     byCompany[ck] = (byCompany[ck] ?? 0) + amt;
-    const ek = eName[r.expenseId.split("-")[0]] || "(none)";
+    const expenseTypeId = r.paymentScheduleId ? scheduleExpenseTypeId[r.paymentScheduleId] : undefined;
+    const ek = (expenseTypeId && eName[expenseTypeId]) || "(none)";
     byExpense[ek] = (byExpense[ek] ?? 0) + amt;
   }
 
