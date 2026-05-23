@@ -2,18 +2,19 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@shared/schema";
 
-// In dev (`next dev`) the long-lived process + Supabase transaction pooler
-// combination hangs on multi-query routes (DELETE record, /api/reports).
-// Prefer the session pooler / direct URL locally; production stays on the
-// transaction pooler because each Vercel function handles one request.
+// The Supabase transaction pooler (port 6543) hangs multi-query routes
+// (DELETE record, /api/reports) for both `next dev` and Vercel functions
+// — `max:1` only papers over the parallel case, not the sequential one.
+// Prefer the session pooler (port 5432) when available; fall back to the
+// transaction pooler only if DATABASE_URL_DIRECT isn't set.
 const isProd = process.env.NODE_ENV === "production";
 const connectionString =
-  (!isProd && process.env.DATABASE_URL_DIRECT) || process.env.DATABASE_URL;
+  process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error("DATABASE_URL is required");
 }
 
-const usingTxnPooler = connectionString === process.env.DATABASE_URL;
+const usingTxnPooler = /:6543\//.test(connectionString);
 
 // Reuse the same `postgres` client across HMR reloads in dev so we don't
 // leak file descriptors / exhaust the session pooler's 15-client cap.
