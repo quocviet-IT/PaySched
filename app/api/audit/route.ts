@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export async function GET() {
-  await requireUser();
+  await requireAdmin();
   const rows = await db.execute(sql`
     select id, user_id as "userId", username, action, entity_type as "entityType",
            entity_id as "entityId", details, created_at as "createdAt"

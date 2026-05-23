@@ -125,7 +125,13 @@ export async function POST(req: NextRequest) {
 
     if (schedule) {
       const update = deriveScheduleUpdate(schedule, paymentDate);
-      if (update) await db.update(paymentSchedules).set(update as any).where(eq(paymentSchedules.id, schedule.id));
+      if (update) {
+        await db.update(paymentSchedules).set(update as any).where(eq(paymentSchedules.id, schedule.id));
+        // Mirror the change in the in-memory map so subsequent rows in this
+        // batch targeting the same schedule see the new nextDueDate/status
+        // instead of recomputing daysLate against the stale original.
+        scheduleMap.set(schedule.id, { ...schedule, ...update } as PaymentSchedule);
+      }
     }
   }
 

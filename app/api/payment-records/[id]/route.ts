@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/crud";
 import { paymentRecords, paymentRecordAudits, insertPaymentRecordSchema } from "@shared/schema";
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await requireUser();
@@ -21,7 +24,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const patch: any = { ...parsed.data };
   if (patch.amount !== undefined) patch.amount = String(patch.amount);
-  if (patch.paymentDate !== undefined) patch.paymentDate = new Date(patch.paymentDate);
+  if (patch.paymentDate !== undefined) {
+    const newPaymentDate = new Date(patch.paymentDate);
+    patch.paymentDate = newPaymentDate;
+    // Keep daysLate in sync with the new paymentDate against the original
+    // scheduledDueDate snapshotted on the record at creation time.
+    if (existing.scheduledDueDate) {
+      const due = new Date(existing.scheduledDueDate);
+      const diff = newPaymentDate.getTime() - due.getTime();
+      patch.daysLate = diff <= 0 ? 0 : Math.ceil(diff / MS_PER_DAY);
+    }
+  }
 
   const [updated] = await db.update(paymentRecords).set(patch).where(eq(paymentRecords.id, params.id)).returning();
 
@@ -33,6 +46,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     afterSnapshot: updated as any,
     performedBy: session.id,
   });
+  await logAudit(
+    session.id,
+    session.username,
+    "update",
+    "payment_records",
+    params.id,
+    `${existing.expenseId} · ${reason.trim()}`,
+  );
 
   return NextResponse.json(updated);
 }
@@ -63,5 +84,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     afterSnapshot: null,
     performedBy: session.id,
   });
+  await logAudit(
+    session.id,
+    session.username,
+    "delete",
+    "payment_records",
+    params.id,
+    `${existing.expenseId} · ${reason}`,
+  );
   return NextResponse.json({ ok: true });
 }
