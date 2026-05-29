@@ -27,8 +27,13 @@ const client =
   postgres(connectionString, {
     // Transaction pooler (port 6543) doesn't support prepared statements.
     prepare: !usingTxnPooler,
-    // Keep client-side max well below the pooler's hard limit.
-    max: usingTxnPooler ? 1 : 3,
+    // One connection per serverless instance. The session pooler caps total
+    // clients at 15; with max:3 a handful of warm instances exhausted it and
+    // routes threw "max clients reached in session mode" (XX000). max:1 lets
+    // ~3x more instances run concurrently under the same cap. Queries here are
+    // tiny so serializing an instance's queries onto one connection is cheap,
+    // and session mode (unlike the txn pooler) handles it without hanging.
+    max: 1,
     // Drop idle sockets so HMR + repeated requests don't pile up.
     idle_timeout: 20,
   });
