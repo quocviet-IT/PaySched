@@ -17,27 +17,35 @@ export interface SessionUser {
 /**
  * Cached per request: layout + page both call `requireUser()`, and the
  * settings/users pages also call it. Without React's `cache()` each call
- * issues a fresh Supabase Auth round-trip + profile DB query — 2 RTTs ×
- * N callers per page load. With cache, the second+ calls return the
- * same in-flight Promise.
+ * issues a fresh auth check + profile DB query — N callers per page load.
+ * With cache, the second+ calls return the same in-flight Promise.
+ *
+ * Uses `getClaims()` rather than `getUser()`: the project signs JWTs with
+ * an asymmetric key (ES256), so `getClaims()` verifies the token signature
+ * locally against the JWKS (cached process-wide) instead of making a
+ * network round-trip to the Auth server on every call. It still refreshes
+ * an expired session and the verification is cryptographic, so this is not
+ * a security trade-off.
  */
 export const getSession = cache(async (): Promise<SessionUser | null> => {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+
+  const userId = String(claims.sub);
+  const email = typeof claims.email === "string" ? claims.email : "";
 
   const [profile] = await db
     .select({ role: profiles.role, username: profiles.username })
     .from(profiles)
-    .where(eq(profiles.id, user.id))
+    .where(eq(profiles.id, userId))
     .limit(1);
 
   return {
-    id: user.id,
-    email: user.email ?? "",
-    username: profile?.username ?? user.email ?? "",
+    id: userId,
+    email,
+    username: profile?.username ?? email,
     role: (profile?.role as Role) ?? "User",
   };
 });

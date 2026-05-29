@@ -34,9 +34,12 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // `getClaims()` verifies the JWT signature locally against the project's
+  // JWKS (asymmetric ES256 keys, cached process-wide) instead of a network
+  // round-trip to the Auth server on every request. It still refreshes an
+  // expired session (rotating the session cookies via the callbacks above).
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith("/login");
