@@ -1,113 +1,32 @@
 "use client";
 
-import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import type { PaymentSchedule, PaymentRecord, InternalCompany } from "@shared/schema";
+import { formatCurrency } from "@/lib/utils";
+
+type IssueType = "overdue" | "late" | "underpaid" | "overpaid";
+interface Issue {
+  type: IssueType;
+  vendorName: string;
+  companyName: string | null;
+  detail: string;
+}
 
 interface ReportsData {
   byMonth: { month: string; total: number; count: number }[];
   byCompany: { company: string; total: number }[];
   byExpense: { expenseType: string; total: number }[];
-}
-
-type IssueType = "overdue" | "late" | "underpaid" | "overpaid";
-interface Issue {
-  type: IssueType;
-  schedule: PaymentSchedule;
-  companyName: string | undefined;
-  detail: string;
-  daysLate?: number;
-}
-
-const TOLERANCE = 0.01;
-const PRIORITY: Record<IssueType, number> = { overdue: 0, late: 1, underpaid: 2, overpaid: 3 };
-
-function computeIssues(
-  schedules: PaymentSchedule[],
-  records: PaymentRecord[],
-  companies: InternalCompany[],
-): Issue[] {
-  const now = new Date();
-  const companyMap = new Map(companies.map((c) => [c.id, c]));
-
-  // Pre-build O(1) lookup maps so the late-payment loop below is O(N) instead of O(N*M).
-  const schedulesById = new Map(schedules.map((s) => [s.id, s]));
-  const schedulesByExpense = new Map(schedules.map((s) => [s.expenseId, s]));
-
-  // Track each schedule's latest payment record in a single pass over records.
-  const latestByExpense = new Map<string, PaymentRecord>();
-  for (const r of records) {
-    const prev = latestByExpense.get(r.expenseId);
-    if (!prev || new Date(r.paymentDate) > new Date(prev.paymentDate)) {
-      latestByExpense.set(r.expenseId, r);
-    }
-  }
-
-  const issues: Issue[] = [];
-
-  for (const s of schedules) {
-    if (s.status === "completed") continue;
-    const company = companyMap.get(s.internalCompanyId);
-    const dueDate = new Date(s.nextDueDate);
-    const scheduleAmount = Number.parseFloat(s.amount);
-    const latest = latestByExpense.get(s.expenseId);
-
-    if (dueDate < now) {
-      issues.push({ type: "overdue", schedule: s, companyName: company?.name, detail: `Due ${formatDate(dueDate)}` });
-    }
-
-    if (latest) {
-      const paid = Number.parseFloat(latest.amount);
-      const date = formatDate(latest.paymentDate);
-      if (paid + TOLERANCE < scheduleAmount) {
-        issues.push({
-          type: "underpaid", schedule: s, companyName: company?.name,
-          detail: `Paid ${formatCurrency(paid)} of ${formatCurrency(scheduleAmount)} on ${date}`,
-        });
-      } else if (paid > scheduleAmount + TOLERANCE) {
-        issues.push({
-          type: "overpaid", schedule: s, companyName: company?.name,
-          detail: `Paid ${formatCurrency(paid)} over ${formatCurrency(scheduleAmount)} on ${date}`,
-        });
-      }
-    }
-  }
-
-  for (const r of records) {
-    if (!r.daysLate || r.daysLate <= 0) continue;
-    const schedule = r.paymentScheduleId
-      ? schedulesById.get(r.paymentScheduleId)
-      : schedulesByExpense.get(r.expenseId);
-    if (!schedule) continue;
-    const company = companyMap.get(schedule.internalCompanyId) ?? companyMap.get(r.internalCompanyId);
-    const dueDate = r.scheduledDueDate ? new Date(r.scheduledDueDate) : null;
-    issues.push({
-      type: "late", schedule, companyName: company?.name, daysLate: r.daysLate,
-      detail: `Paid on ${formatDate(r.paymentDate)} (${r.daysLate} day${r.daysLate === 1 ? "" : "s"} late${
-        dueDate ? `; due ${formatDate(dueDate)}` : ""
-      })`,
-    });
-  }
-
-  return issues.sort((a, b) => PRIORITY[a.type] - PRIORITY[b.type]);
+  issues: Issue[];
 }
 
 export function ReportsView() {
   const { data, isLoading } = useQuery<ReportsData>({ queryKey: ["/api/reports"] });
-  const { data: schedules = [] } = useQuery<PaymentSchedule[]>({ queryKey: ["/api/payment-schedules"] });
-  const { data: records = [] } = useQuery<PaymentRecord[]>({ queryKey: ["/api/payment-records"] });
-  const { data: companies = [] } = useQuery<InternalCompany[]>({ queryKey: ["/api/internal-companies"] });
 
-  const issues = React.useMemo(
-    () => computeIssues(schedules, records, companies),
-    [schedules, records, companies],
-  );
+  const issues = data?.issues ?? [];
 
   const totalAll = (data?.byMonth ?? []).reduce((s, r) => s + r.total, 0);
   const totalCount = (data?.byMonth ?? []).reduce((s, r) => s + r.count, 0);
@@ -161,7 +80,7 @@ export function ReportsView() {
                         {iss.type}
                       </span>
                     </TableCell>
-                    <TableCell className="text-hp-ink">{iss.schedule.vendorName}</TableCell>
+                    <TableCell className="text-hp-ink">{iss.vendorName}</TableCell>
                     <TableCell>{iss.companyName ?? "—"}</TableCell>
                     <TableCell className="text-sm text-hp-body">{iss.detail}</TableCell>
                   </TableRow>
