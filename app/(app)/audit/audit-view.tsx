@@ -96,7 +96,7 @@ function AuditFilters({
   return (
     <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
       <label className="flex flex-col gap-1">
-        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Từ ngày</span>
+        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">From</span>
         <Input
           type="date"
           value={filters.from}
@@ -106,7 +106,7 @@ function AuditFilters({
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Đến ngày</span>
+        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">To</span>
         <Input
           type="date"
           value={filters.to}
@@ -116,16 +116,16 @@ function AuditFilters({
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Người dùng</span>
+        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">User</span>
         <Select
           value={filters.userId || ALL_USERS}
           onValueChange={(v) => onChange({ ...filters, userId: v === ALL_USERS ? "" : v })}
         >
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Tất cả" />
+            <SelectValue placeholder="All users" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_USERS}>Tất cả người dùng</SelectItem>
+            <SelectItem value={ALL_USERS}>All users</SelectItem>
             {users.map((u) => (
               <SelectItem key={u.id} value={u.id}>{u.username}</SelectItem>
             ))}
@@ -134,7 +134,7 @@ function AuditFilters({
       </label>
       {hasFilters && (
         <Button variant="ghost" onClick={() => onChange(EMPTY_FILTERS)}>
-          Xoá lọc
+          Clear filters
         </Button>
       )}
     </div>
