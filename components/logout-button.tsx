@@ -15,11 +15,16 @@ export function LogoutButton() {
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
+          // Record the logout in the audit log and revoke the session
+          // server-side, in the background. Dispatched *before* the local
+          // signOut so the session cookie is still attached to the request;
+          // `keepalive` lets it finish after we navigate away. Not awaited,
+          // so it never blocks the UI.
+          fetch("/api/auth/logout", { method: "POST", keepalive: true });
           // `local` scope clears the session cookie without the global
           // /auth/v1/logout network round-trip (which blocks the UI for
           // ~150ms warm, up to ~900ms cold). The user is fully signed out
-          // of this browser immediately; refresh tokens on other devices
-          // expire on their own.
+          // of this browser immediately.
           await supabase.auth.signOut({ scope: "local" });
           router.replace("/login");
           router.refresh();
