@@ -6,6 +6,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pagination } from "@/components/ui/pagination";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface AuditLogRow {
   id: string;
@@ -26,10 +29,37 @@ interface RecordAudit {
   beforeSnapshot: unknown;
   afterSnapshot: unknown;
   performedBy: string;
+  performedByName: string | null;
   createdAt: string;
 }
 
+interface UserRow {
+  id: string;
+  username: string;
+}
+
+interface Filters {
+  from: string;
+  to: string;
+  userId: string;
+}
+
+const EMPTY_FILTERS: Filters = { from: "", to: "", userId: "" };
+const ALL_USERS = "__all__";
+
+function buildUrl(base: string, f: Filters): string {
+  const p = new URLSearchParams();
+  if (f.from) p.set("from", f.from);
+  if (f.to) p.set("to", f.to);
+  if (f.userId) p.set("userId", f.userId);
+  const qs = p.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
 export function AuditView() {
+  const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const { data: users = [] } = useQuery<UserRow[]>({ queryKey: ["/api/users"] });
+
   return (
     <div className="space-y-10">
       <header>
@@ -38,28 +68,89 @@ export function AuditView() {
         <div className="mt-5 h-px bg-hp-rule" />
       </header>
 
+      <AuditFilters filters={filters} onChange={setFilters} users={users} />
+
       <Tabs defaultValue="general">
         <TabsList>
           <TabsTrigger value="general">General activity</TabsTrigger>
           <TabsTrigger value="records">Record changes</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general"><GeneralAudit /></TabsContent>
-        <TabsContent value="records"><RecordsAudit /></TabsContent>
+        <TabsContent value="general"><GeneralAudit filters={filters} /></TabsContent>
+        <TabsContent value="records"><RecordsAudit filters={filters} /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function GeneralAudit() {
-  const { data = [], isLoading } = useQuery<AuditLogRow[]>({ queryKey: ["/api/audit"] });
+function AuditFilters({
+  filters,
+  onChange,
+  users,
+}: {
+  filters: Filters;
+  onChange: (f: Filters) => void;
+  users: UserRow[];
+}) {
+  const hasFilters = Boolean(filters.from || filters.to || filters.userId);
+  return (
+    <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+      <label className="flex flex-col gap-1">
+        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Từ ngày</span>
+        <Input
+          type="date"
+          value={filters.from}
+          max={filters.to || undefined}
+          onChange={(e) => onChange({ ...filters, from: e.target.value })}
+          className="w-[160px]"
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Đến ngày</span>
+        <Input
+          type="date"
+          value={filters.to}
+          min={filters.from || undefined}
+          onChange={(e) => onChange({ ...filters, to: e.target.value })}
+          className="w-[160px]"
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Người dùng</span>
+        <Select
+          value={filters.userId || ALL_USERS}
+          onValueChange={(v) => onChange({ ...filters, userId: v === ALL_USERS ? "" : v })}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Tất cả" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_USERS}>Tất cả người dùng</SelectItem>
+            {users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>{u.username}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </label>
+      {hasFilters && (
+        <Button variant="ghost" onClick={() => onChange(EMPTY_FILTERS)}>
+          Xoá lọc
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function GeneralAudit({ filters }: { filters: Filters }) {
+  const url = buildUrl("/api/audit", filters);
+  const { data = [], isLoading } = useQuery<AuditLogRow[]>({ queryKey: [url] });
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  React.useEffect(() => { setPage(1); }, [pageSize, data.length]);
+  React.useEffect(() => { setPage(1); }, [pageSize, data.length, url]);
   const paged = data.slice((page - 1) * pageSize, page * pageSize);
   return (
     <Card>
-      <CardHeader><CardTitle>200 most recent events</CardTitle></CardHeader>
+      <CardHeader><CardTitle>500 most recent events</CardTitle></CardHeader>
       <CardContent>
         {isLoading ? (
           <p className="uppercase tracking-eyebrow text-[11px] text-hp-muted">Loading…</p>
@@ -107,11 +198,12 @@ function GeneralAudit() {
   );
 }
 
-function RecordsAudit() {
-  const { data = [], isLoading } = useQuery<RecordAudit[]>({ queryKey: ["/api/payment-record-audits"] });
+function RecordsAudit({ filters }: { filters: Filters }) {
+  const url = buildUrl("/api/payment-record-audits", filters);
+  const { data = [], isLoading } = useQuery<RecordAudit[]>({ queryKey: [url] });
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  React.useEffect(() => { setPage(1); }, [pageSize, data.length]);
+  React.useEffect(() => { setPage(1); }, [pageSize, data.length, url]);
   const paged = data.slice((page - 1) * pageSize, page * pageSize);
   return (
     <Card>
@@ -148,7 +240,9 @@ function RecordsAudit() {
                   </TableCell>
                   <TableCell className="font-mono text-xs text-hp-muted">{r.paymentRecordId.slice(0, 8)}…</TableCell>
                   <TableCell className="text-sm text-hp-body">{r.reason}</TableCell>
-                  <TableCell className="font-mono text-xs text-hp-muted">{r.performedBy.slice(0, 8)}…</TableCell>
+                  <TableCell className="text-xs text-hp-muted">
+                    {r.performedByName ?? `${r.performedBy.slice(0, 8)}…`}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
