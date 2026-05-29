@@ -9,6 +9,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { X } from "lucide-react";
 
 interface AuditLogRow {
   id: string;
@@ -133,8 +134,14 @@ function AuditFilters({
         </Select>
       </label>
       {hasFilters && (
-        <Button variant="ghost" onClick={() => onChange(EMPTY_FILTERS)}>
-          Clear filters
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onChange(EMPTY_FILTERS)}
+          title="Clear filters"
+          aria-label="Clear filters"
+        >
+          <X className="h-4 w-4" />
         </Button>
       )}
     </div>
