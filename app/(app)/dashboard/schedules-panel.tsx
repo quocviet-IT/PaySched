@@ -55,7 +55,21 @@ function statusLabel(s: PaymentSchedule): string {
   return `In ${diff}d`;
 }
 
-export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
+export function SchedulesPanel({
+  isAdmin,
+  editScheduleId,
+  onEditConsumed,
+  recordScheduleId,
+  onRecordConsumed,
+}: {
+  isAdmin: boolean;
+  /** When set, open the edit dialog for this schedule (e.g. from the detail dialog). */
+  editScheduleId?: string | null;
+  onEditConsumed?: () => void;
+  /** When set, open the record-payment dialog for this schedule (e.g. from the upcoming panel). */
+  recordScheduleId?: string | null;
+  onRecordConsumed?: () => void;
+}) {
   const qc = useQueryClient();
   const [search, setSearch] = React.useState("");
   const [tab, setTab] = React.useState("all");
@@ -67,6 +81,27 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
   const [pageSize, setPageSize] = React.useState(25);
 
   const { data: schedules = [] } = useQuery<PaymentSchedule[]>({ queryKey: ["/api/payment-schedules"] });
+
+  // Open the edit dialog when an external trigger (detail dialog) requests it.
+  React.useEffect(() => {
+    if (!editScheduleId) return;
+    const target = schedules.find((s) => s.id === editScheduleId);
+    if (target) {
+      setEditing(target);
+      setOpen(true);
+      onEditConsumed?.();
+    }
+  }, [editScheduleId, schedules, onEditConsumed]);
+
+  // Open the record-payment dialog when an external trigger (upcoming panel) requests it.
+  React.useEffect(() => {
+    if (!recordScheduleId) return;
+    const target = schedules.find((s) => s.id === recordScheduleId);
+    if (target) {
+      setRecordTarget(target);
+      onRecordConsumed?.();
+    }
+  }, [recordScheduleId, schedules, onRecordConsumed]);
   const { data: companies = [] } = useQuery<InternalCompany[]>({ queryKey: ["/api/internal-companies"] });
   const { data: accounts = [] } = useQuery<PaymentAccount[]>({ queryKey: ["/api/payment-accounts"] });
   const { data: paymentTypes = [] } = useQuery<PaymentType[]>({ queryKey: ["/api/payment-types"] });
@@ -182,10 +217,18 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
               <TableBody>
                 {paged.map((s) => {
                   const st = statusOf(s);
+                  const inactive = s.isActive === false;
                   return (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} className={inactive ? "opacity-55" : undefined}>
                       <TableCell>
-                        <div className="text-hp-ink">{s.vendorName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-hp-ink">{s.vendorName}</span>
+                          {inactive && (
+                            <span className="uppercase tracking-eyebrow text-[10px] text-hp-muted border border-hp-rule px-1.5 py-0.5">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] uppercase tracking-eyebrow text-hp-muted mt-0.5">{s.expenseId}</div>
                       </TableCell>
                       <TableCell>{cName(s.internalCompanyId)}</TableCell>
@@ -194,11 +237,12 @@ export function SchedulesPanel({ isAdmin }: { isAdmin: boolean }) {
                       <TableCell>{formatDate(s.nextDueDate)}</TableCell>
                       <TableCell>
                         <span className={`uppercase tracking-eyebrow text-[11px] ${
+                          inactive ? "text-hp-muted" :
                           st === "overdue" ? "text-hp-pink" :
                           st === "due-soon" ? "text-hp-ink" :
                           st === "paid" ? "text-hp-muted" : "text-hp-body"
                         }`}>
-                          {statusLabel(s)}
+                          {inactive ? "Inactive" : statusLabel(s)}
                         </span>
                       </TableCell>
                       <TableCell className="flex gap-1">
@@ -281,6 +325,7 @@ function ScheduleDialog({
   const [form, setForm] = React.useState({
     vendorName: "", vendorAbbreviation: "", amount: "", frequency: "monthly",
     nextDueDate: "", internalCompanyId: "", paymentTypeId: "", paymentAccountId: "", expenseTypeId: "",
+    isActive: true,
   });
 
   React.useEffect(() => {
@@ -295,12 +340,14 @@ function ScheduleDialog({
         paymentTypeId: editing.paymentTypeId,
         paymentAccountId: editing.paymentAccountId,
         expenseTypeId: editing.expenseTypeId,
+        isActive: editing.isActive !== false,
       });
     } else if (open) {
       setForm({
         vendorName: "", vendorAbbreviation: "", amount: "", frequency: "monthly",
         nextDueDate: new Date().toISOString().slice(0, 10),
         internalCompanyId: "", paymentTypeId: "", paymentAccountId: "", expenseTypeId: "",
+        isActive: true,
       });
     }
   }, [editing, open]);
@@ -433,6 +480,29 @@ function ScheduleDialog({
               </SelectContent>
             </Select>
           </div>
+          {editing && (
+            <div className="md:col-span-2 flex items-center justify-between gap-4 border border-hp-rule px-4 py-3">
+              <div>
+                <div className="text-sm text-hp-ink">{form.isActive ? "Active" : "Cancelled"}</div>
+                <div className="text-xs text-hp-muted">
+                  Cancelled schedules are hidden from the dashboard, forecasts, and KPIs.
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.isActive ? "true" : "false"}
+                onClick={() => setForm({ ...form, isActive: !form.isActive })}
+                className={`uppercase tracking-eyebrow text-[11px] px-3 py-1.5 border transition-colors ${
+                  form.isActive
+                    ? "border-hp-ink bg-hp-ink text-hp-foundation"
+                    : "border-hp-rule text-hp-muted hover:text-hp-ink"
+                }`}
+              >
+                {form.isActive ? "Active" : "Inactive"}
+              </button>
+            </div>
+          )}
           <DialogFooter className="md:col-span-2">
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={save.isPending}>

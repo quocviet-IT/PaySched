@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, timestamp, integer, jsonb, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, timestamp, integer, jsonb, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -128,6 +128,9 @@ export const paymentSchedules = pgTable("payment_schedules", {
   paymentAccountId: varchar("payment_account_id").notNull(),
   expenseTypeId: varchar("expense_type_id").notNull(),
   status: text("status").notNull().default("scheduled"),
+  // Whether the schedule is still active. Set to false to cancel a schedule
+  // (it then stops generating obligations and is hidden from forecasts/KPIs).
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  LayoutDashboard, BarChart3, Settings as SettingsIcon, ClipboardList, Users, UserCircle,
+  LayoutDashboard, Settings as SettingsIcon, ClipboardList, Users, UserCircle, BookOpen,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
@@ -10,7 +10,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const BASE_NAV = [
   { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
-  { href: "/reports", label: "Reports", icon: <BarChart3 className="h-4 w-4 shrink-0" /> },
   { href: "/settings", label: "Settings", icon: <SettingsIcon className="h-4 w-4 shrink-0" /> },
   { href: "/audit", label: "Audit", icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
 ];
@@ -23,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? [{ href: "/users", label: "Users", icon: <Users className="h-4 w-4 shrink-0" /> }]
       : []),
     { href: "/account", label: "Account", icon: <UserCircle className="h-4 w-4 shrink-0" /> },
+    { href: "/guide", label: "Guide", icon: <BookOpen className="h-4 w-4 shrink-0" /> },
   ];
 
   return (
