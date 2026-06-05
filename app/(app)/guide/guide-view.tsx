@@ -18,6 +18,20 @@ export function GuideView() {
   const [chapterIndex, setChapterIndex] = React.useState(0);
   const [completed, setCompleted] = React.useState<Progress>(EMPTY_PROGRESS);
 
+  // Open a specific tab/chapter when linked with ?guide=&chapter= (e.g. the
+  // "?" help button on the dashboard). Read once, on the client only.
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get("guide");
+    if (g === "user" || g === "admin") setAudience(g);
+    const chapterId = params.get("chapter");
+    if (chapterId) {
+      const list = GUIDE[g === "admin" ? "admin" : "user"];
+      const idx = list.findIndex((c) => c.id === chapterId);
+      if (idx >= 0) setChapterIndex(idx);
+    }
+  }, []);
+
   // Load saved reading progress once, on the client only.
   React.useEffect(() => {
     try {

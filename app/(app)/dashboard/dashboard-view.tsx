@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { addMonths, differenceInDays, format, isSameMonth } from "date-fns";
-import { Wallet, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Wallet, CalendarClock, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type {
@@ -418,20 +419,30 @@ export function DashboardView({ isAdmin, sessionUserId }: { isAdmin: boolean; se
           <h1 className="font-title text-[32px] leading-tight text-hp-ink">Expense Dashboard</h1>
           <p className="mt-2 text-sm text-hp-muted">Upcoming obligations, spending breakdown, and payment activity</p>
         </div>
-        <div className="flex flex-wrap border border-hp-rule">
-          {(Object.keys(TIMEFRAME_LABELS) as Timeframe[]).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setTimeframe(value)}
-              className={cn(
-                "px-3 py-1.5 text-[11px] uppercase tracking-eyebrow transition-colors",
-                timeframe === value ? "bg-hp-ink text-hp-card" : "text-hp-muted hover:text-hp-ink",
-              )}
-            >
-              {TIMEFRAME_LABELS[value]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap border border-hp-rule">
+            {(Object.keys(TIMEFRAME_LABELS) as Timeframe[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTimeframe(value)}
+                className={cn(
+                  "px-3 py-1.5 text-[11px] uppercase tracking-eyebrow transition-colors",
+                  timeframe === value ? "bg-hp-ink text-hp-card" : "text-hp-muted hover:text-hp-ink",
+                )}
+              >
+                {TIMEFRAME_LABELS[value]}
+              </button>
+            ))}
+          </div>
+          <Link
+            href="/guide?guide=user&chapter=dashboard"
+            title="How to read this dashboard"
+            aria-label="Open the dashboard guide"
+            className="flex h-8 w-8 items-center justify-center border border-hp-rule text-hp-muted transition-colors hover:border-hp-ink hover:text-hp-ink"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Link>
         </div>
       </header>
 

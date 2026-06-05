@@ -17,7 +17,14 @@ export interface GlossarySection {
 export interface FigureSection {
   kind: "figure";
   /** Matches a mockup in guide-figures.tsx. */
-  variant: "dashboard-kpis" | "schedule-row" | "record-form";
+  variant:
+    | "dashboard-kpis"
+    | "schedule-row"
+    | "record-form"
+    | "drilldown"
+    | "csv-import"
+    | "users-table"
+    | "master-lists";
   caption?: string;
   /** Explains the numbered ① ② markers drawn on the mockup. */
   callouts?: { n: number; label: string }[];
@@ -103,6 +110,15 @@ export const GUIDE: Record<GuideAudience, GuideChapter[]> = {
           kind: "prose",
           heading: "Click anything to see the detail",
           body: "Almost everything is clickable. Click a number, a bar, or a slice and a table opens listing exactly which payments make it up. Click a row in that table to open the full detail of that expense, including its payment history.",
+        },
+        {
+          kind: "figure",
+          variant: "drilldown",
+          caption: "The table that opens when you click a number or chart.",
+          callouts: [
+            { n: 1, label: "Click any row to open that expense's full detail and payment history." },
+            { n: 2, label: "The footer shows how many items you're looking at and their total." },
+          ],
         },
         {
           kind: "prose",
@@ -207,6 +223,15 @@ export const GUIDE: Record<GuideAudience, GuideChapter[]> = {
           body: "Open Import (CSV) from the Schedules tab and upload your file. The app walks you through matching your columns and account names to the ones it uses, shows you a preview to review, then brings everything in once you confirm.",
         },
         {
+          kind: "figure",
+          variant: "csv-import",
+          caption: "Matching your spreadsheet's columns, then the preview step.",
+          callouts: [
+            { n: 1, label: "Tell the app which of your columns is the vendor, amount, due date, and so on." },
+            { n: 2, label: "Check the preview, then Confirm to bring everything in at once." },
+          ],
+        },
+        {
           kind: "prose",
           heading: "Check before you confirm",
           body: "Always look over the preview step. It's much easier to fix a wrong column or a mismatched account there than to clean up dozens of records afterward.",
@@ -299,6 +324,15 @@ export const GUIDE: Record<GuideAudience, GuideChapter[]> = {
           body: "A User can record and manage payments day to day. An Admin can also manage other users, edit the master lists, and delete things. Give Admin only to the few people who truly need it.",
         },
         {
+          kind: "figure",
+          variant: "users-table",
+          caption: "The Users list — each person and their role.",
+          callouts: [
+            { n: 1, label: "The role decides what someone can do — keep Admin to a trusted few." },
+            { n: 2, label: "Only admins see the delete action; everyday users can't wipe records." },
+          ],
+        },
+        {
           kind: "prose",
           heading: "Deleting is admin-only",
           body: "Only admins can delete schedules and payment records. This is on purpose — it stops everyday mistakes from wiping out history.",
@@ -330,6 +364,14 @@ export const GUIDE: Record<GuideAudience, GuideChapter[]> = {
           kind: "prose",
           heading: "Payment types & expense types",
           body: "Payment types describe how you pay (bank transfer, card, cash…). Expense types describe what the money is for (rent, utilities, supplies…). Both keep reporting consistent across the team.",
+        },
+        {
+          kind: "figure",
+          variant: "master-lists",
+          caption: "The lists in Settings that schedules are built from.",
+          callouts: [
+            { n: 1, label: "When staff add a schedule, they pick from these lists — so set them up first and keep them tidy." },
+          ],
         },
       ],
     },

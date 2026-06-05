@@ -129,10 +129,117 @@ function RecordForm() {
   );
 }
 
+function DrillDown() {
+  return (
+    <Window>
+      <div className="grid grid-cols-[1.4fr_1fr_auto] gap-3 border-b border-hp-rule pb-2 text-[10px] uppercase tracking-eyebrow text-hp-muted">
+        <span>Vendor</span>
+        <span>Company</span>
+        <span className="text-right">Amount</span>
+      </div>
+      <div className="relative grid grid-cols-[1.4fr_1fr_auto] gap-3 border-b border-hp-rule bg-hp-inset py-2.5 text-sm">
+        <span className="text-hp-ink">City Power</span>
+        <span className="text-hp-muted">Acme</span>
+        <span className="text-right tabular-nums text-hp-ink">$420.00</span>
+        <span className="absolute -right-1 top-1.5"><Marker n={1} /></span>
+      </div>
+      <div className="grid grid-cols-[1.4fr_1fr_auto] gap-3 border-b border-hp-rule py-2.5 text-sm">
+        <span className="text-hp-ink">Cloud Co</span>
+        <span className="text-hp-muted">Acme</span>
+        <span className="text-right tabular-nums text-hp-ink">$99.00</span>
+      </div>
+      <div className="relative mt-2 flex items-center justify-between text-[11px] uppercase tracking-eyebrow text-hp-muted">
+        <span>2 of 6 items</span>
+        <span className="flex items-center gap-2">
+          <span className="font-title text-[15px] normal-case tracking-normal text-hp-ink">$519.00</span>
+          <Marker n={2} />
+        </span>
+      </div>
+    </Window>
+  );
+}
+
+function CsvImport() {
+  return (
+    <Window>
+      <div className="relative">
+        <span className="absolute -right-1 -top-1"><Marker n={1} /></span>
+        <div className="mb-1 text-[10px] uppercase tracking-eyebrow text-hp-muted">Match your columns</div>
+        <div className="space-y-1.5 border border-hp-rule p-3 text-sm">
+          <div className="flex items-center gap-2"><span className="flex-1 truncate text-hp-body">&quot;Vendor&quot;</span><span className="text-hp-muted">→</span><span className="w-24 text-hp-ink">Vendor</span></div>
+          <div className="flex items-center gap-2"><span className="flex-1 truncate text-hp-body">&quot;Amt&quot;</span><span className="text-hp-muted">→</span><span className="w-24 text-hp-ink">Amount</span></div>
+          <div className="flex items-center gap-2"><span className="flex-1 truncate text-hp-body">&quot;Due&quot;</span><span className="text-hp-muted">→</span><span className="w-24 text-hp-ink">Next due</span></div>
+        </div>
+      </div>
+      <div className="relative mt-3 flex items-center justify-between border border-hp-rule bg-hp-inset px-3 py-2 text-sm">
+        <span className="text-hp-body">Preview · 12 rows ready</span>
+        <span className="flex items-center gap-2">
+          <span className="bg-hp-ink px-2.5 py-1 text-[10px] uppercase tracking-eyebrow text-hp-card">Confirm</span>
+          <Marker n={2} />
+        </span>
+      </div>
+    </Window>
+  );
+}
+
+function UsersTable() {
+  return (
+    <Window>
+      <div className="grid grid-cols-[1.5fr_1fr_auto] gap-3 border-b border-hp-rule pb-2 text-[10px] uppercase tracking-eyebrow text-hp-muted">
+        <span>User</span>
+        <span>Role</span>
+        <span />
+      </div>
+      <div className="grid grid-cols-[1.5fr_1fr_auto] items-center gap-3 border-b border-hp-rule py-2.5 text-sm">
+        <span className="text-hp-ink">linh.n</span>
+        <span className="uppercase tracking-eyebrow text-[10px] text-hp-muted">User</span>
+        <span />
+      </div>
+      <div className="relative grid grid-cols-[1.5fr_1fr_auto] items-center gap-3 py-2.5 text-sm">
+        <span className="text-hp-ink">admin</span>
+        <span className="uppercase tracking-eyebrow text-[10px] text-hp-pink">Admin <span className="align-middle"><Marker n={1} /></span></span>
+        <span className="flex items-center justify-end gap-2">
+          <span className="flex h-6 w-6 items-center justify-center border border-hp-rule text-hp-muted">🗑</span>
+          <Marker n={2} />
+        </span>
+      </div>
+    </Window>
+  );
+}
+
+function MasterLists() {
+  const groups: [string, string[]][] = [
+    ["Companies", ["Acme", "HP Jewelry"]],
+    ["Vendors", ["City Power", "Cloud Co"]],
+    ["Accounts", ["Checking *1234"]],
+    ["Payment types", ["Bank transfer", "Card"]],
+    ["Expense types", ["Rent", "Utilities"]],
+  ];
+  return (
+    <Window>
+      <div className="relative space-y-2.5">
+        <span className="absolute -right-1 -top-1"><Marker n={1} /></span>
+        {groups.map(([label, items]) => (
+          <div key={label} className="flex flex-wrap items-center gap-2">
+            <span className="w-28 shrink-0 text-[10px] uppercase tracking-eyebrow text-hp-muted">{label}</span>
+            {items.map((it) => (
+              <span key={it} className="border border-hp-rule bg-hp-card px-2 py-0.5 text-[12px] text-hp-body">{it}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Window>
+  );
+}
+
 const VARIANTS: Record<string, React.FC> = {
   "dashboard-kpis": DashboardKpis,
   "schedule-row": ScheduleRow,
   "record-form": RecordForm,
+  "drilldown": DrillDown,
+  "csv-import": CsvImport,
+  "users-table": UsersTable,
+  "master-lists": MasterLists,
 };
 
 export function GuideFigure({ variant }: { variant: string }) {
