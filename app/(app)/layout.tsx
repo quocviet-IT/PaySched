@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   LayoutDashboard, Settings as SettingsIcon, ClipboardList, Users, UserCircle, BookOpen,
 } from "lucide-react";
@@ -6,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { Logo } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
+import { SidebarNav } from "@/components/sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const BASE_NAV = [
@@ -31,24 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="h-20 border-b border-hp-rule px-6 flex items-center">
           <Logo size="sm" />
         </div>
-        <nav className="px-3 py-6 flex flex-col gap-px">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="
-                px-4 py-2.5
-                uppercase tracking-eyebrow text-[11px] text-hp-body
-                hover:text-hp-ink hover:bg-hp-inset
-                transition-colors duration-150
-                flex items-center gap-3
-              "
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
+        <SidebarNav nav={nav} />
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0">
