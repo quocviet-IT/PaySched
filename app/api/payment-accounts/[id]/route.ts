@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser, requireAdmin } from "@/lib/auth";
+import { requireUser, requireAdmin, authErrorResponse } from "@/lib/auth";
 import {
   paymentAccounts,
   internalCompanies,
@@ -55,7 +55,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export const PUT = PATCH;
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   const [row] = await db.delete(paymentAccounts).where(eq(paymentAccounts.id, params.id)).returning();
   if (!row) return NextResponse.json({ message: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });

@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, authErrorResponse, type SessionUser } from "@/lib/auth";
 import { profiles } from "@shared/schema";
 import { createServiceClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/crud";
 
 export async function GET() {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   const rows = await db
     .select({
       id: profiles.id,
@@ -27,7 +33,14 @@ const createSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await requireAdmin();
+  let session: SessionUser;
+  try {
+    session = await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   const parsed = createSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ message: "Invalid input", errors: parsed.error.flatten() }, { status: 400 });

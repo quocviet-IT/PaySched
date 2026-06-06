@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { paymentRecords, paymentRecordAudits } from "@shared/schema";
 import { createServiceClient } from "@/lib/supabase/server";
+import { validateUpload, safeExtension } from "@/lib/uploads";
 
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "uploads";
 
@@ -24,12 +25,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ message: "No files provided" }, { status: 400 });
   }
 
+  for (const f of [confirmation, approval]) {
+    if (f instanceof File) {
+      const invalid = validateUpload(f);
+      if (invalid) return NextResponse.json({ message: invalid }, { status: 400 });
+    }
+  }
+
   const [existing] = await db.select().from(paymentRecords).where(eq(paymentRecords.id, params.id)).limit(1);
   if (!existing) return NextResponse.json({ message: "Record not found" }, { status: 404 });
 
   const service = createServiceClient();
   const uploadOne = async (f: File) => {
-    const ext = f.name.includes(".") ? f.name.slice(f.name.lastIndexOf(".")) : "";
+    const ext = safeExtension(f);
     const path = `${session.id}/${Date.now()}-${crypto.randomUUID()}${ext}`;
     const bytes = new Uint8Array(await f.arrayBuffer());
     const { error } = await service.storage.from(BUCKET).upload(path, bytes, {

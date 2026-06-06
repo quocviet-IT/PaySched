@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, authErrorResponse, type SessionUser } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/crud";
 
@@ -10,7 +10,14 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  let session: SessionUser;
+  try {
+    session = await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   const parsed = patchSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ message: "Invalid input" }, { status: 400 });
@@ -38,7 +45,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  let session: SessionUser;
+  try {
+    session = await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   if (params.id === session.id) {
     return NextResponse.json({ message: "Cannot delete yourself" }, { status: 400 });
   }

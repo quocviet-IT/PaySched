@@ -16,7 +16,7 @@ import { eq, sql, getTableName } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser, requireAdmin } from "@/lib/auth";
+import { requireUser, requireAdmin, authErrorResponse, type SessionUser } from "@/lib/auth";
 
 type AnyTable = PgTable & { id: any };
 
@@ -49,8 +49,15 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
     },
 
     createOne: async (req: NextRequest) => {
+      let session: SessionUser;
       try {
-        const session = await checkAuth();
+        session = await checkAuth();
+      } catch (e) {
+        const res = authErrorResponse(e);
+        if (res) return res;
+        throw e;
+      }
+      try {
         const raw = await req.json().catch(() => ({}));
         const parsed = insertSchema.safeParse(raw);
         if (!parsed.success) {
@@ -68,9 +75,9 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
         if (errorMsg.includes("unique constraint")) {
           return NextResponse.json({ message: "This record already exists" }, { status: 409 });
         }
-        // Handle other database errors
+        // Log the raw error server-side; never leak DB internals to the client.
         console.error("[CRUD CREATE ERROR]", { error, message: errorMsg, stack: error?.stack });
-        return NextResponse.json({ message: errorMsg || "Failed to create record" }, { status: 500 });
+        return NextResponse.json({ message: "Failed to create record" }, { status: 500 });
       }
     },
 
@@ -82,8 +89,15 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
     },
 
     updateOne: async (req: NextRequest, { params }: { params: { id: string } }) => {
+      let session: SessionUser;
       try {
-        const session = await checkAuth();
+        session = await checkAuth();
+      } catch (e) {
+        const res = authErrorResponse(e);
+        if (res) return res;
+        throw e;
+      }
+      try {
         const raw = await req.json().catch(() => ({}));
         const parsed = updateSchema.safeParse(raw);
         if (!parsed.success) {
@@ -103,13 +117,20 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
           return NextResponse.json({ message: "This record already exists" }, { status: 409 });
         }
         console.error("[CRUD UPDATE ERROR]", { error, message: errorMsg, stack: error?.stack });
-        return NextResponse.json({ message: errorMsg || "Failed to update record" }, { status: 500 });
+        return NextResponse.json({ message: "Failed to update record" }, { status: 500 });
       }
     },
 
     deleteOne: async (_req: NextRequest, { params }: { params: { id: string } }) => {
+      let session: SessionUser;
       try {
-        const session = await checkAuth();
+        session = await checkAuth();
+      } catch (e) {
+        const res = authErrorResponse(e);
+        if (res) return res;
+        throw e;
+      }
+      try {
         const [row] = await db
           .delete(table)
           .where(eq((table as any).id, params.id))
@@ -120,7 +141,7 @@ export function makeCrud<S extends z.ZodTypeAny>(cfg: CrudConfig<S>) {
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
         console.error("[CRUD DELETE ERROR]", { error, message: errorMsg, stack: error?.stack });
-        return NextResponse.json({ message: errorMsg || "Failed to delete record" }, { status: 500 });
+        return NextResponse.json({ message: "Failed to delete record" }, { status: 500 });
       }
     },
   };

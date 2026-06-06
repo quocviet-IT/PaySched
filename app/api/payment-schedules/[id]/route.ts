@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireUser, requireAdmin } from "@/lib/auth";
+import { requireUser, requireAdmin, authErrorResponse, type SessionUser } from "@/lib/auth";
 import { logAudit } from "@/lib/crud";
 import { paymentSchedules, insertPaymentScheduleSchema } from "@shared/schema";
 
@@ -30,7 +30,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export const PUT = PATCH;
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  let session: SessionUser;
+  try {
+    session = await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   const [row] = await db.delete(paymentSchedules).where(eq(paymentSchedules.id, params.id)).returning();
   if (!row) return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
   await logAudit(session.id, session.username, "delete", "payment_schedules", row.id, `${row.expenseId} · ${row.vendorName}`);

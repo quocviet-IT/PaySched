@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq, and, desc, sql, SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireUser, requireAdmin } from "@/lib/auth";
+import { requireUser, requireAdmin, authErrorResponse } from "@/lib/auth";
 import { paymentRecordAudits, profiles } from "@shared/schema";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -19,7 +19,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(rows);
   }
 
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
 
   const params = req.nextUrl.searchParams;
   const from = params.get("from");

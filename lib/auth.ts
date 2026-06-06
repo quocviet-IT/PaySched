@@ -1,11 +1,37 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { createClient } from "./supabase/server";
 import { db } from "./db";
 import { profiles } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 export type Role = "Admin" | "User";
+
+/**
+ * Thrown by the `require*` guards when an authenticated caller lacks the
+ * required role. Route handlers convert it to the right HTTP status via
+ * `authErrorResponse`, so a forbidden request returns 403 instead of a
+ * generic 500 from an uncaught `Error`.
+ */
+export class AuthError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
+/**
+ * In a route handler `catch`, turn an `AuthError` into its JSON response and
+ * return null for anything else (so the caller can re-throw / handle it). This
+ * keeps auth failures (403) from being mistaken for DB errors (500).
+ */
+export function authErrorResponse(error: unknown): NextResponse | null {
+  if (error instanceof AuthError) {
+    return NextResponse.json({ message: error.message }, { status: error.status });
+  }
+  return null;
+}
 
 export interface SessionUser {
   id: string;
@@ -59,7 +85,7 @@ export async function requireUser(): Promise<SessionUser> {
 export async function requireAdmin(): Promise<SessionUser> {
   const session = await requireUser();
   if (session.role !== "Admin") {
-    throw new Error("Admin role required");
+    throw new AuthError(403, "Admin role required");
   }
   return session;
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
+import { validateUpload, safeExtension } from "@/lib/uploads";
 
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "uploads";
 
@@ -12,7 +13,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "No file provided" }, { status: 400 });
   }
 
-  const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : "";
+  const invalid = validateUpload(file);
+  if (invalid) return NextResponse.json({ message: invalid }, { status: 400 });
+
+  const ext = safeExtension(file);
   const path = `${session.id}/${Date.now()}-${crypto.randomUUID()}${ext}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
 

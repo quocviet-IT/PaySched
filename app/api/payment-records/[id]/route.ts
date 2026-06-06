@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireUser, requireAdmin } from "@/lib/auth";
+import { requireUser, requireAdmin, authErrorResponse, type SessionUser } from "@/lib/auth";
 import { logAudit } from "@/lib/crud";
 import { paymentRecords, paymentRecordAudits, insertPaymentRecordSchema } from "@shared/schema";
 
@@ -61,7 +61,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export const PUT = PATCH;
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  let session: SessionUser;
+  try {
+    session = await requireAdmin();
+  } catch (e) {
+    const res = authErrorResponse(e);
+    if (res) return res;
+    throw e;
+  }
   // Reason can come from body or query string for DELETE
   let reason = "";
   try {
